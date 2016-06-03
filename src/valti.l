@@ -1,7 +1,32 @@
 %option noyywrap
 %{
-	#include "valti.h"
 	#include <stdlib.h>
+	#include "valti.h"
+
+	/* Node */
+
+	typedef enum NodeType {
+	    NTNUM, NTVAR, // Value or variable?
+		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTEQ // Operators
+	} NodeType;
+
+	typedef struct Node {
+	    NodeType type;
+	    union {
+	        double value;
+	        char *name;
+	        struct Node **children;
+	    };
+	} Node;
+
+	Node *node_new(NodeType type)
+	{
+	    Node *node = (Node*)malloc(sizeof(Node));
+	    node->type = type;
+	    node->children = NULL;
+
+	    return node;
+	}
 %}
 
 blank [ \t]+
@@ -19,26 +44,50 @@ variable [a-zA-Z]+
 {blank} { /* On ignore */ }
 
 {reel} {
-	yylval.val = atof(yytext);
+	//yylval.val = atof(yytext);
+	yylval.node = node_new(NTNUM);
+	yylval.node->value = atof(yytext);
 	return(NOMBRE);
 }
 
 {variable} {
-	yylval.var = (char*)_strdup(yytext);
+	//yylval.var = (char*)_strdup(yytext);
+	yylval.node = node_new(NTVAR);
+	yylval.node->name = (char*)_strdup(yytext);
 	return(VARIABLE);
 }
 
-"+" return(PLUS);
-"-" return(MOINS);
+"+" {
+	yylval.node = node_new(NTPLUS);
+	return(PLUS);
+}
+"-" {
+	yylval.node = node_new(NTMIN);
+	return(MOINS);
+}
 
-"*" return(FOIS);
-"/" return(DIVISE);
+"*" {
+	yylval.node = node_new(NTMULT);
+	return(FOIS);
+}
+"/" {
+	yylval.node = node_new(NTDIV);
+	return(DIVISE);
+}
 
-"^" return(PUISSANCE);
+"^" {
+	yylval.node = node_new(NTPOW);
+	return(PUISSANCE);
+}
 
-"(" return(PARENTHESE_GAUCHE);
-")" return(PARENTHESE_DROITE);
+"(" return(OP_PAR);
+")" return(CL_PAR);
 
-"=" return(EGAL);
+"=" {
+	//yylval.node = node_new(NTEQ);
+	return(EQUAL);
+}
 
-"\n" return(FIN);
+";" return (COLON);
+
+"\n" return(END);
