@@ -54,7 +54,7 @@
 %token OP_PAR CL_PAR COLON
 %token END
 
-// %type <node> InstList
+%type <node> InstList
 %type <node> Inst
 %type <node> Expression
 
@@ -73,7 +73,7 @@ Input:
 
 Line:
 	END
-	| Inst END {
+	| InstList END {
 		// Process the tree and print the result
 		tree_print($1, 0);
 		printf("Result: %f\n\n", tree_process($1));
@@ -81,14 +81,14 @@ Line:
 	}
 	;
 
-/*InstList:
+InstList:
 	Inst {
 		$$ = $1;
 	}
 	| InstList Inst {
 		$$ = $1;
 	}
-	;*/
+	;
 
 Inst:
 	// Expression
