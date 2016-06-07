@@ -50,13 +50,12 @@
 }
 
 %token <node> NOMBRE VARIABLE
-%token <node> PLUS MOINS FOIS  DIVISE  PUISSANCE
+%token <node> PLUS MOINS FOIS DIVISE PUISSANCE EQUAL
 %token OP_PAR CL_PAR COLON
 %token END
-%token EQUAL
 
-/*%type <node> InstList
-%type <node> Inst*/
+// %type <node> InstList
+%type <node> Inst
 %type <node> Expression
 
 %left PLUS MOINS
@@ -69,25 +68,18 @@
 
 Input:
     /* Empty */
-  | Input Line
-  ;
+	| Input Line
+	;
 
 Line:
 	END
-  | Expression END {
-	  // Process the tree and print the result
-	  tree_print($1, 0);
-	  printf("Result: %f\n\n", tree_process($1));
-	  tree_free($1);
-
-	  //printf("Result: %f\n", $1);
-  }
-  | VARIABLE EQUAL Expression COLON {
-	// Store a new variable
-	list_add(&variables, $1->name, $3->value);
-	printf("Affectation: %s = %f\n", $1->name, $3->value);
-  }
-  ;
+	| Inst END {
+		// Process the tree and print the result
+		tree_print($1, 0);
+		printf("Result: %f\n\n", tree_process($1));
+		tree_free($1);
+	}
+	;
 
 /*InstList:
 	Inst {
@@ -96,62 +88,50 @@ Line:
 	| InstList Inst {
 		$$ = $1;
 	}
-	;
+	;*/
 
 Inst:
+	// Expression
 	Expression COLON {
 		$$ = $1;
 	}
+	// Affectation
 	| VARIABLE EQUAL Expression COLON {
-  	  // Store a new variable
-  	  list_add(&variables, $1->name, $3->value);
-  	  printf("Affectation: %s = %f\n", $1->name, $3->value);
+    	// Add the affectation in the tree
+    	$$ = node_children($2, $1, $3);
     }
-	;*/
+	;
 
 Expression:
-    NOMBRE { $$ = $1; }
-  | VARIABLE {
-	  List *v = list_get(variables, $1->name);
-
-	  if(v) {
-		  $$->type = NTNUM;
-		  $$->value = v->value;
-	  }
-	  else {
-		  printf("Unknown variable: %s\n", $1->name);
-		  return;
-	  }
-  }
-  | Expression PLUS Expression {
-	  //$$ = $1 + $3;
-	  $$ = node_children($2, $1, $3);
-  }
-  | Expression MOINS Expression {
-	  //$$ = $1 - $3;
-	  $$ = node_children($2, $1, $3);
-  }
-  | Expression FOIS Expression {
-	  //$$ = $1 * $3;
-	  $$ = node_children($2, $1, $3);
-  }
-  | Expression DIVISE Expression {
-	  //$$ = $1 / $3;
-	  $$ = node_children($2, $1, $3);
-  }
-  | MOINS Expression %prec NEG {
-	  //$$ = -$2;
-	  $2->value = -($2->value);
-	  $$ = $2;
-  }
-  | Expression PUISSANCE Expression {
-	  //$$ = pow($1, $3);
-	  $$ = node_children($2, $1, $3);
-  }
-  | OP_PAR Expression CL_PAR {
-	  $$ = $2;
-  }
-  ;
+    NOMBRE {
+		$$ = $1;
+	}
+  	| VARIABLE {
+		$$ = $1;
+	}
+	| Expression PLUS Expression {
+		$$ = node_children($2, $1, $3);
+	}
+	| Expression MOINS Expression {
+		$$ = node_children($2, $1, $3);
+	}
+	| Expression FOIS Expression {
+		$$ = node_children($2, $1, $3);
+	}
+	| Expression DIVISE Expression {
+		$$ = node_children($2, $1, $3);
+	}
+	| MOINS Expression %prec NEG {
+		$2->value = -($2->value);
+		$$ = $2;
+	}
+	| Expression PUISSANCE Expression {
+		$$ = node_children($2, $1, $3);
+	}
+	| OP_PAR Expression CL_PAR {
+		$$ = $2;
+	}
+	;
 
 %%
 
@@ -159,7 +139,7 @@ Expression:
 int yyerror(char *s)
 {
 	printf("%s\n", s);
-  	list_free(&variables);
+	list_free(&variables);
 }
 
 int main(int argc, char **argv)
@@ -201,27 +181,60 @@ Node *node_children(Node *father, Node *child1, Node *child2)
 
 double tree_process(Node *node)
 {
+	// Temp variables
+	List *var = NULL;
+	double val;
+
     switch(node->type)
     {
         case NTNUM:
-		case NTVAR:
             return node->value;
             break;
+
+		case NTVAR:
+			var = list_get(variables, node->name);
+
+			if(var) {
+				return var->value;
+			}
+			else {
+				printf("Unknown variable: %s\n", node->name);
+			}
+			break;
+
         case NTPLUS:
             return tree_process(node->children[0]) + tree_process(node->children[1]);
             break;
+
         case NTMIN:
             return tree_process(node->children[0]) - tree_process(node->children[1]);
             break;
+
         case NTMULT:
             return tree_process(node->children[0]) * tree_process(node->children[1]);
             break;
+
         case NTDIV:
             return tree_process(node->children[0]) / tree_process(node->children[1]);
             break;
+
         case NTPOW:
             return tree_process(node->children[0]) + tree_process(node->children[1]);
             break;
+
+		case NTEQ:
+			// We ignore the left (NTVAR) part of the tree when processing an = (NTEQ) node.
+			val = tree_process(node->children[1]);
+
+			// Store a new variable in memory
+	    	list_add(&variables, node->children[0]->name, val);
+	    	printf("Affectation: %s = %f\n", node->children[0]->name, val);
+
+			return val;
+			break;
+
+		default:
+			return 0.;
     }
 }
 
@@ -245,10 +258,11 @@ void tree_print(Node *node, int stage)
         case NTMULT: printf("*"); break;
         case NTDIV: printf("/"); break;
         case NTPOW: printf("^"); break;
+        case NTEQ: printf("="); break;
     }
     printf("\n");
 
-    if(node->children)
+    if(node->children && node->type != NTVAR)
     {
         tree_print(node->children[0], stage + 1);
         tree_print(node->children[1], stage + 1);
@@ -257,11 +271,13 @@ void tree_print(Node *node, int stage)
 
 void tree_free(Node *node)
 {
-	if(node->children)
+	if(node->children && node->type != NTVAR)
 	{
 		tree_free(node->children[0]);
 		tree_free(node->children[1]);
 	}
+
+	// The node->name is already free in list_free
 	free(node);
 }
 

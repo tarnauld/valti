@@ -1,6 +1,7 @@
 %option noyywrap
 %{
 	#include <stdlib.h>
+	#include <string.h>
 	#include "valti.h"
 
 	/* Node */
@@ -23,6 +24,7 @@
 	{
 	    Node *node = (Node*)malloc(sizeof(Node));
 	    node->type = type;
+		node->name = NULL;
 	    node->children = NULL;
 
 	    return node;
@@ -44,16 +46,14 @@ variable [a-zA-Z]+
 {blank} { /* On ignore */ }
 
 {reel} {
-	//yylval.val = atof(yytext);
 	yylval.node = node_new(NTNUM);
 	yylval.node->value = atof(yytext);
 	return(NOMBRE);
 }
 
 {variable} {
-	//yylval.var = (char*)_strdup(yytext);
 	yylval.node = node_new(NTVAR);
-	yylval.node->name = (char*)_strdup(yytext);
+	yylval.node->name = strdup(yytext);
 	return(VARIABLE);
 }
 
@@ -84,7 +84,7 @@ variable [a-zA-Z]+
 ")" return(CL_PAR);
 
 "=" {
-	//yylval.node = node_new(NTEQ);
+	yylval.node = node_new(NTEQ);
 	return(EQUAL);
 }
 

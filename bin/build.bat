@@ -13,3 +13,8 @@ gcc -c valti.y.c -o valti.y.o
 gcc -o valti valti.lex.o valti.y.o
 
 pause
+
+cls
+call valti.exe -f main.vt
+
+pause
