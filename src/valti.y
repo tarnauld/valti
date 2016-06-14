@@ -255,8 +255,9 @@ double calculate_expression(Node *node)
             break;
 
         case NTPOW:
-            return calculate_expression(node->children[0]) + calculate_expression(node->children[1]);
+            return pow(calculate_expression(node->children[0]), calculate_expression(node->children[1]));
             break;
+
 		default:
 			return -1.;
 			break;
