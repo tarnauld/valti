@@ -10,10 +10,12 @@
 	extern FILE *yyin;
 
 	/* Node */
+
 	typedef enum NodeType {
 	    NTNUM, NTVAR, // Value or variable?
 		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF, // Operators
-		NTINST, NTEMPTY // Handle instructions
+		NTINST, NTEMPTY, // Handle instructions
+		NTECHO //Primary instructions
 	} NodeType;
 
 	typedef struct Node {
@@ -56,6 +58,7 @@
 
 %token <node> NUMBER VARIABLE
 %token <node> PLUS MINUS MULTIPLY DIVIDE POWER AFFECT
+%token <node> __ECHO__
 
 %token OP_PAR CL_PAR COLON
 %token END
@@ -102,8 +105,8 @@ InstList:
 
 Inst:
 	// Expression
-	Expression COLON {
-		$$ = $1;
+	__ECHO__ OP_PAR Expression CL_PAR COLON {
+		$$ = node_children($1, $3, node_new(NTEMPTY));
 	}
 	// Affectation
 	| VARIABLE AFFECT Expression COLON {
@@ -207,16 +210,20 @@ void exec(Node *node)
 		case NTAFF:
 			// We ignore the left (NTVAR) part of the tree when processing an = (NTAFF) node.
 			val = calculate_expression(node->children[1]);
-
 			// Store a new variable in memory
 			list_add(&variables, node->children[0]->name, val);
 			printf("Affectation: %s = %f\n", node->children[0]->name, val);
 			break;
 
+		case NTECHO:
+			val = calculate_expression(node->children[0]);
+			printf("%lf\n\n", val);
+			break;
+
 		// Arithmetic expression
 		default:
-			val = calculate_expression(node);
-			printf("%lf\n\n", val);
+			printf("Syntax error.\n");
+			break;
 	}
 }
 
@@ -286,6 +293,7 @@ void tree_print(Node *node, int stage)
         case NTDIV: printf("/"); break;
         case NTPOW: printf("^"); break;
         case NTAFF: printf("="); break;
+		case NTECHO: printf("echo");break;
     }
     printf("\n");
 

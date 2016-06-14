@@ -8,7 +8,9 @@
 
 	typedef enum NodeType {
 	    NTNUM, NTVAR, // Value or variable?
-		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF // Operators
+		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF, // Operators
+		NTINST, NTEMPTY, // Handle instructions
+		NTECHO //Primary instructions
 	} NodeType;
 
 	typedef struct Node {
@@ -44,6 +46,11 @@ variable [a-zA-Z]+
 %%
 
 {blank} { /* On ignore */ }
+
+"echo" {
+	yylval.node = node_new(NTECHO);
+	return(__ECHO__);
+}
 
 {reel} {
 	yylval.node = node_new(NTNUM);
