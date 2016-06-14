@@ -7,10 +7,11 @@
 	/* Node */
 
 	typedef enum NodeType {
+		NTINST, NTEMPTY, // Handle instructions
 	    NTNUM, NTVAR, // Value or variable?
 		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF, // Operators
-		NTINST, NTEMPTY, // Handle instructions
-		NTECHO //Primary instructions
+		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE,// Boolean operators
+		NTECHO, NTIF // Primary instructions
 	} NodeType;
 
 	typedef struct Node {
@@ -50,6 +51,11 @@ variable [a-zA-Z]+
 "echo" {
 	yylval.node = node_new(NTECHO);
 	return(__ECHO__);
+}
+
+"if" {
+	yylval.node = node_new(NTIF);
+	return(__IF__);
 }
 
 {reel} {
@@ -93,6 +99,36 @@ variable [a-zA-Z]+
 "=" {
 	yylval.node = node_new(NTAFF);
 	return(AFFECT);
+}
+
+"==" {
+	yylval.node = node_new(NTISEQ);
+	return(IS_EQUAL);
+}
+
+"!=" {
+	yylval.node = node_new(NTISDIFF);
+	return(IS_DIFFERENT);
+}
+
+"<" {
+	yylval.node = node_new(NTISLT);
+	return(IS_LOWER);
+}
+
+">" {
+	yylval.node = node_new(NTISGT);
+	return(IS_GREATER);
+}
+
+"<=" {
+	yylval.node = node_new(NTISLE);
+	return(IS_LOWER_EQUAL);
+}
+
+">=" {
+	yylval.node = node_new(NTISGE);
+	return(IS_GREATER_EQUAL);
 }
 
 ";" return (COLON);

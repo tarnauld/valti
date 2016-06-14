@@ -12,10 +12,11 @@
 	/* Node */
 
 	typedef enum NodeType {
+		NTINST, NTEMPTY, // Handle instructions
 	    NTNUM, NTVAR, // Value or variable?
 		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF, // Operators
-		NTINST, NTEMPTY, // Handle instructions
-		NTECHO //Primary instructions
+		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE,// Boolean operators
+		NTECHO, NTIF // Primary instructions
 	} NodeType;
 
 	typedef struct Node {
@@ -30,6 +31,7 @@
 	Node *node_new(NodeType type);
 	Node *node_children(Node*, Node*, Node*);
 	void exec(Node*);
+	int boolean_value(Node*);
 	double calculate_expression(Node*);
 	void tree_print(Node*, int);
 	void tree_free(Node*);
@@ -58,13 +60,15 @@
 
 %token <node> NUMBER VARIABLE
 %token <node> PLUS MINUS MULTIPLY DIVIDE POWER AFFECT
-%token <node> __ECHO__
+%token <node> IS_EQUAL IS_DIFFERENT IS_LOWER IS_GREATER IS_LOWER_EQUAL IS_GREATER_EQUAL
+%token <node> __ECHO__ __IF__
 
 %token OP_PAR CL_PAR COLON
 %token END
 
 %type <node> InstList
 %type <node> Inst
+%type <node> BooleanExpression
 %type <node> Expression
 
 %left PLUS MINUS
@@ -104,7 +108,7 @@ InstList:
 	;
 
 Inst:
-	// Expression
+	// Echo
 	__ECHO__ OP_PAR Expression CL_PAR COLON {
 		$$ = node_children($1, $3, node_new(NTEMPTY));
 	}
@@ -113,6 +117,31 @@ Inst:
     	// Add the affectation in the tree
     	$$ = node_children($2, $1, $3);
     }
+	// Conditions
+	| __IF__ OP_PAR BooleanExpression CL_PAR InstList {
+		$$ = node_children($1, $3, $5);
+	}
+	;
+
+BooleanExpression:
+	Expression IS_EQUAL Expression {
+		$$ = node_children($2, $1, $3);
+	}
+	| Expression IS_DIFFERENT Expression {
+		$$ = node_children($2, $1, $3);
+	}
+	| Expression IS_LOWER Expression {
+		$$ = node_children($2, $1, $3);
+	}
+	| Expression IS_GREATER Expression {
+		$$ = node_children($2, $1, $3);
+	}
+	| Expression IS_LOWER_EQUAL Expression {
+		$$ = node_children($2, $1, $3);
+	}
+	| Expression IS_GREATER_EQUAL Expression {
+		$$ = node_children($2, $1, $3);
+	}
 	;
 
 Expression:
@@ -203,9 +232,7 @@ void exec(Node *node)
 			exec(node->children[0]);
 			exec(node->children[1]);
 			break;
-
-		case NTEMPTY:
-			break;
+		case NTEMPTY: break;
 
 		case NTAFF:
 			// We ignore the left (NTVAR) part of the tree when processing an = (NTAFF) node.
@@ -216,14 +243,32 @@ void exec(Node *node)
 			break;
 
 		case NTECHO:
-			val = calculate_expression(node->children[0]);
-			printf("%lf\n\n", val);
+			printf("%lf\n", calculate_expression(node->children[0]));
 			break;
 
-		// Arithmetic expression
+		case NTIF:
+			if(boolean_value(node->children[0]))
+				exec(node->children[1]);
+			break;
+
 		default:
 			printf("Syntax error.\n");
 			break;
+	}
+}
+
+int boolean_value(Node *node)
+{
+	switch(node->type)
+	{
+		case NTISEQ: return calculate_expression(node->children[0]) == calculate_expression(node->children[1]);
+		case NTISDIFF: return calculate_expression(node->children[0]) != calculate_expression(node->children[1]);
+		case NTISLT: return calculate_expression(node->children[0]) < calculate_expression(node->children[1]);
+		case NTISGT: return calculate_expression(node->children[0]) > calculate_expression(node->children[1]);
+		case NTISLE: return calculate_expression(node->children[0]) <= calculate_expression(node->children[1]);
+		case NTISGE: return calculate_expression(node->children[0]) >= calculate_expression(node->children[1]);
+
+		default: return 0; // False by default
 	}
 }
 
@@ -282,18 +327,27 @@ void tree_print(Node *node, int stage)
 
     switch(node->type)
     {
-		case NTINST: printf("{"); break;
-		case NTEMPTY: printf("}"); break;
+		case NTINST: 	printf("{"); break;
+		case NTEMPTY:	printf("}"); break;
 
-        case NTNUM: printf("%.2lf", node->value); break;
-        case NTVAR: printf("%s", node->name); break;
-        case NTPLUS: printf("+"); break;
-		case NTMIN: printf("-"); break;
-        case NTMULT: printf("*"); break;
-        case NTDIV: printf("/"); break;
-        case NTPOW: printf("^"); break;
-        case NTAFF: printf("="); break;
-		case NTECHO: printf("echo");break;
+        case NTNUM: 	printf("%.2lf", node->value); break;
+        case NTVAR: 	printf("%s", node->name); break;
+        case NTPLUS: 	printf("+"); break;
+		case NTMIN: 	printf("-"); break;
+        case NTMULT:	printf("*"); break;
+        case NTDIV: 	printf("/"); break;
+        case NTPOW: 	printf("^"); break;
+        case NTAFF: 	printf("="); break;
+
+		case NTECHO: 	printf("echo"); break;
+		case NTIF: 		printf("if"); break;
+
+		case NTISEQ:	printf("=="); break;
+		case NTISDIFF:	printf("!="); break;
+		case NTISLT:	printf("<"); break;
+		case NTISGT:	printf(">"); break;
+		case NTISLE:	printf("<="); break;
+		case NTISGE: 	printf(">="); break;
     }
     printf("\n");
 
