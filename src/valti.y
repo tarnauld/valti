@@ -5,6 +5,8 @@
 	#include <string.h>
 
 	extern int yyparse();
+	extern int yyerror(char*);
+	extern int yylex();
 	extern FILE *yyin;
 
 	/* Node */
@@ -147,6 +149,7 @@ int yyerror(char *s)
 {
 	printf("%s\n", s);
 	list_free(&variables);
+	return -1;
 }
 
 int main(int argc, char **argv)
@@ -254,7 +257,11 @@ double calculate_expression(Node *node)
         case NTPOW:
             return calculate_expression(node->children[0]) + calculate_expression(node->children[1]);
             break;
+		default:
+			return -1.;
+			break;
     }
+	return -1.;
 }
 
 void tree_print(Node *node, int stage)
