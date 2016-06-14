@@ -10,7 +10,8 @@
 	/* Node */
 	typedef enum NodeType {
 	    NTNUM, NTVAR, // Value or variable?
-		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTEQ // Operators
+		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTEQ, // Operators
+		NTINST, NTEMPTY // Handle instructions
 	} NodeType;
 
 	typedef struct Node {
@@ -22,8 +23,10 @@
 	    };
 	} Node;
 
+	Node *node_new(NodeType type);
 	Node *node_children(Node*, Node*, Node*);
-	double tree_process(Node*);
+	void exec(Node*);
+	double calculate_expression(Node*);
 	void tree_print(Node*, int);
 	void tree_free(Node*);
 
@@ -74,19 +77,23 @@ Input:
 Line:
 	END
 	| InstList END {
-		// Process the tree and print the result
+		// Process the tree
 		tree_print($1, 0);
-		printf("Result: %f\n\n", tree_process($1));
+		exec($1);
 		tree_free($1);
 	}
 	;
 
 InstList:
 	Inst {
-		$$ = $1;
+		Node *inst = node_new(NTINST);
+		Node *empty = node_new(NTEMPTY);
+
+		$$ = node_children(inst, $1, empty);
 	}
 	| InstList Inst {
-		$$ = $1;
+		Node *inst = node_new(NTINST);
+		$$ = node_children(inst, $1, $2);
 	}
 	;
 
@@ -179,11 +186,40 @@ Node *node_children(Node *father, Node *child1, Node *child2)
     return father;
 }
 
-double tree_process(Node *node)
+void exec(Node *node)
+{
+	double val;
+
+	switch(node->type)
+	{
+		case NTINST:
+			exec(node->children[0]);
+			exec(node->children[1]);
+			break;
+
+		case NTEMPTY:
+			break;
+
+		case NTEQ:
+			// We ignore the left (NTVAR) part of the tree when processing an = (NTEQ) node.
+			val = calculate_expression(node->children[1]);
+
+			// Store a new variable in memory
+			list_add(&variables, node->children[0]->name, val);
+			printf("Affectation: %s = %f\n", node->children[0]->name, val);
+			break;
+
+		// Arithmetic expression
+		default:
+			val = calculate_expression(node);
+			printf("%lf\n\n", val);
+	}
+}
+
+double calculate_expression(Node *node)
 {
 	// Temp variables
 	List *var = NULL;
-	double val;
 
     switch(node->type)
     {
@@ -194,47 +230,30 @@ double tree_process(Node *node)
 		case NTVAR:
 			var = list_get(variables, node->name);
 
-			if(var) {
+			if(var)
 				return var->value;
-			}
-			else {
-				printf("Unknown variable: %s\n", node->name);
-			}
+			printf("Unknown variable: %s\n", node->name);
 			break;
 
         case NTPLUS:
-            return tree_process(node->children[0]) + tree_process(node->children[1]);
+            return calculate_expression(node->children[0]) + calculate_expression(node->children[1]);
             break;
 
         case NTMIN:
-            return tree_process(node->children[0]) - tree_process(node->children[1]);
+            return calculate_expression(node->children[0]) - calculate_expression(node->children[1]);
             break;
 
         case NTMULT:
-            return tree_process(node->children[0]) * tree_process(node->children[1]);
+            return calculate_expression(node->children[0]) * calculate_expression(node->children[1]);
             break;
 
         case NTDIV:
-            return tree_process(node->children[0]) / tree_process(node->children[1]);
+            return calculate_expression(node->children[0]) / calculate_expression(node->children[1]);
             break;
 
         case NTPOW:
-            return tree_process(node->children[0]) + tree_process(node->children[1]);
+            return calculate_expression(node->children[0]) + calculate_expression(node->children[1]);
             break;
-
-		case NTEQ:
-			// We ignore the left (NTVAR) part of the tree when processing an = (NTEQ) node.
-			val = tree_process(node->children[1]);
-
-			// Store a new variable in memory
-	    	list_add(&variables, node->children[0]->name, val);
-	    	printf("Affectation: %s = %f\n", node->children[0]->name, val);
-
-			return val;
-			break;
-
-		default:
-			return 0.;
     }
 }
 
@@ -247,12 +266,11 @@ void tree_print(Node *node, int stage)
 
     switch(node->type)
     {
-        case NTNUM:
-            printf("%.2lf", node->value);
-            break;
-        case NTVAR:
-            printf("%s", node->name);
-            break;
+		case NTINST: printf("Inst {"); break;
+		case NTEMPTY: printf("}"); break;
+
+        case NTNUM: printf("%.2lf", node->value); break;
+        case NTVAR: printf("%s", node->name); break;
         case NTPLUS: printf("+"); break;
 		case NTMIN: printf("-"); break;
         case NTMULT: printf("*"); break;
