@@ -289,7 +289,7 @@ void tree_print(Node *node, int stage)
     }
     printf("\n");
 
-    if(node->children && node->type != NTVAR)
+    if(node->children && node->type != NTVAR && node->type != NTNUM)
     {
         tree_print(node->children[0], stage + 1);
         tree_print(node->children[1], stage + 1);
@@ -298,7 +298,7 @@ void tree_print(Node *node, int stage)
 
 void tree_free(Node *node)
 {
-	if(node->children && node->type != NTVAR)
+	if(node->children && node->type != NTVAR && node->type != NTNUM)
 	{
 		tree_free(node->children[0]);
 		tree_free(node->children[1]);
