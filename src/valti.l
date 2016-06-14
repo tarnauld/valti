@@ -10,7 +10,8 @@
 		NTINST, NTEMPTY, // Handle instructions
 	    NTNUM, NTVAR, // Value or variable?
 		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF, // Operators
-		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE,// Boolean operators
+		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE, // Boolean operators
+		NTAND, NTOR,
 		NTECHO, NTIF // Primary instructions
 	} NodeType;
 
@@ -131,6 +132,16 @@ variable [a-zA-Z]+
 ">=" {
 	yylval.node = node_new(NTISGE);
 	return(IS_GREATER_EQUAL);
+}
+
+"&&" {
+	yylval.node = node_new(NTAND);
+	return(BOOL_AND);
+}
+
+"||" {
+	yylval.node = node_new(NTOR);
+	return(BOOL_OR);
 }
 
 ";" return (COLON);

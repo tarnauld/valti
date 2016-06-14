@@ -16,6 +16,7 @@
 	    NTNUM, NTVAR, // Value or variable?
 		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF, // Operators
 		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE,// Boolean operators
+		NTAND, NTOR,
 		NTECHO, NTIF // Primary instructions
 	} NodeType;
 
@@ -61,6 +62,7 @@
 %token <node> NUMBER VARIABLE
 %token <node> PLUS MINUS MULTIPLY DIVIDE POWER AFFECT
 %token <node> IS_EQUAL IS_DIFFERENT IS_LOWER IS_GREATER IS_LOWER_EQUAL IS_GREATER_EQUAL
+%token <node> BOOL_AND BOOL_OR
 %token <node> __ECHO__ __IF__
 
 %token OP_PAR CL_PAR OP_BRA CL_BRA COLON
@@ -75,6 +77,7 @@
 %left MULTIPLY DIVIDE
 %left NEG
 %left IS_EQUAL IS_DIFFERENT IS_LOWER IS_GREATER IS_LOWER_EQUAL IS_GREATER_EQUAL
+%left BOOL_AND BOOL_OR
 %right POWER
 
 %start Input
@@ -142,6 +145,15 @@ BooleanExpression:
 	}
 	| Expression IS_GREATER_EQUAL Expression {
 		$$ = node_children($2, $1, $3);
+	}
+	| BooleanExpression BOOL_AND BooleanExpression {
+		$$ = node_children($2, $1, $3);
+	}
+	| BooleanExpression BOOL_OR BooleanExpression {
+		$$ = node_children($2, $1, $3);
+	}
+	| OP_PAR BooleanExpression CL_PAR {
+		$$ = $2;
 	}
 	;
 
@@ -268,6 +280,8 @@ int boolean_value(Node *node)
 		case NTISGT: return calculate_expression(node->children[0]) > calculate_expression(node->children[1]);
 		case NTISLE: return calculate_expression(node->children[0]) <= calculate_expression(node->children[1]);
 		case NTISGE: return calculate_expression(node->children[0]) >= calculate_expression(node->children[1]);
+		case NTAND: return boolean_value(node->children[0]) && boolean_value(node->children[1]);
+		case NTOR: return boolean_value(node->children[0]) || boolean_value(node->children[1]);
 
 		default: return 0; // False by default
 	}
@@ -349,6 +363,9 @@ void tree_print(Node *node, int stage)
 		case NTISGT:	printf(">"); break;
 		case NTISLE:	printf("<="); break;
 		case NTISGE: 	printf(">="); break;
+
+		case NTAND:		printf("&&"); break;
+		case NTOR:		printf("||"); break;
     }
     printf("\n");
 
