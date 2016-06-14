@@ -8,7 +8,7 @@
 
 	typedef enum NodeType {
 	    NTNUM, NTVAR, // Value or variable?
-		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTEQ // Operators
+		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF // Operators
 	} NodeType;
 
 	typedef struct Node {
@@ -48,7 +48,7 @@ variable [a-zA-Z]+
 {reel} {
 	yylval.node = node_new(NTNUM);
 	yylval.node->value = atof(yytext);
-	return(NOMBRE);
+	return(NUMBER);
 }
 
 {variable} {
@@ -63,29 +63,29 @@ variable [a-zA-Z]+
 }
 "-" {
 	yylval.node = node_new(NTMIN);
-	return(MOINS);
+	return(MINUS);
 }
 
 "*" {
 	yylval.node = node_new(NTMULT);
-	return(FOIS);
+	return(MULTIPLY);
 }
 "/" {
 	yylval.node = node_new(NTDIV);
-	return(DIVISE);
+	return(DIVIDE);
 }
 
 "^" {
 	yylval.node = node_new(NTPOW);
-	return(PUISSANCE);
+	return(POWER);
 }
 
 "(" return(OP_PAR);
 ")" return(CL_PAR);
 
 "=" {
-	yylval.node = node_new(NTEQ);
-	return(EQUAL);
+	yylval.node = node_new(NTAFF);
+	return(AFFECT);
 }
 
 ";" return (COLON);

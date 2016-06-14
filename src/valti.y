@@ -12,7 +12,7 @@
 	/* Node */
 	typedef enum NodeType {
 	    NTNUM, NTVAR, // Value or variable?
-		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTEQ, // Operators
+		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF, // Operators
 		NTINST, NTEMPTY // Handle instructions
 	} NodeType;
 
@@ -54,8 +54,9 @@
 	struct Node *node;
 }
 
-%token <node> NOMBRE VARIABLE
-%token <node> PLUS MOINS FOIS DIVISE PUISSANCE EQUAL
+%token <node> NUMBER VARIABLE
+%token <node> PLUS MINUS MULTIPLY DIVIDE POWER AFFECT
+
 %token OP_PAR CL_PAR COLON
 %token END
 
@@ -63,10 +64,10 @@
 %type <node> Inst
 %type <node> Expression
 
-%left PLUS MOINS
-%left FOIS DIVISE
+%left PLUS MINUS
+%left MULTIPLY DIVIDE
 %left NEG
-%right PUISSANCE
+%right POWER
 
 %start Input
 %%
@@ -105,14 +106,14 @@ Inst:
 		$$ = $1;
 	}
 	// Affectation
-	| VARIABLE EQUAL Expression COLON {
+	| VARIABLE AFFECT Expression COLON {
     	// Add the affectation in the tree
     	$$ = node_children($2, $1, $3);
     }
 	;
 
 Expression:
-    NOMBRE {
+    NUMBER {
 		$$ = $1;
 	}
   	| VARIABLE {
@@ -121,20 +122,20 @@ Expression:
 	| Expression PLUS Expression {
 		$$ = node_children($2, $1, $3);
 	}
-	| Expression MOINS Expression {
+	| Expression MINUS Expression {
 		$$ = node_children($2, $1, $3);
 	}
-	| Expression FOIS Expression {
+	| Expression MULTIPLY Expression {
 		$$ = node_children($2, $1, $3);
 	}
-	| Expression DIVISE Expression {
+	| Expression DIVIDE Expression {
 		$$ = node_children($2, $1, $3);
 	}
-	| MOINS Expression %prec NEG {
+	| MINUS Expression %prec NEG {
 		$2->value = -($2->value);
 		$$ = $2;
 	}
-	| Expression PUISSANCE Expression {
+	| Expression POWER Expression {
 		$$ = node_children($2, $1, $3);
 	}
 	| OP_PAR Expression CL_PAR {
@@ -161,7 +162,7 @@ int main(int argc, char **argv)
 		src = fopen(argv[2], "r");
 		if(!src)
 		{
-			printf("Impossible d'ouvrir le fichier à executer.\n");
+			printf("Unable to open the file.\n");
 			exit(-1);
 		}
 
@@ -203,8 +204,8 @@ void exec(Node *node)
 		case NTEMPTY:
 			break;
 
-		case NTEQ:
-			// We ignore the left (NTVAR) part of the tree when processing an = (NTEQ) node.
+		case NTAFF:
+			// We ignore the left (NTVAR) part of the tree when processing an = (NTAFF) node.
 			val = calculate_expression(node->children[1]);
 
 			// Store a new variable in memory
@@ -274,7 +275,7 @@ void tree_print(Node *node, int stage)
 
     switch(node->type)
     {
-		case NTINST: printf("Inst {"); break;
+		case NTINST: printf("{"); break;
 		case NTEMPTY: printf("}"); break;
 
         case NTNUM: printf("%.2lf", node->value); break;
@@ -284,7 +285,7 @@ void tree_print(Node *node, int stage)
         case NTMULT: printf("*"); break;
         case NTDIV: printf("/"); break;
         case NTPOW: printf("^"); break;
-        case NTEQ: printf("="); break;
+        case NTAFF: printf("="); break;
     }
     printf("\n");
 
