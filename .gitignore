@@ -3,3 +3,4 @@ bin/*.h
 bin/*.c
 bin/*.o
 bin/valti
+bin/*.output

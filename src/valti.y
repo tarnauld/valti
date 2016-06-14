@@ -63,7 +63,7 @@
 %token <node> IS_EQUAL IS_DIFFERENT IS_LOWER IS_GREATER IS_LOWER_EQUAL IS_GREATER_EQUAL
 %token <node> __ECHO__ __IF__
 
-%token OP_PAR CL_PAR COLON
+%token OP_PAR CL_PAR OP_BRA CL_BRA COLON
 %token END
 
 %type <node> InstList
@@ -74,6 +74,7 @@
 %left PLUS MINUS
 %left MULTIPLY DIVIDE
 %left NEG
+%left IS_EQUAL IS_DIFFERENT IS_LOWER IS_GREATER IS_LOWER_EQUAL IS_GREATER_EQUAL
 %right POWER
 
 %start Input
@@ -118,8 +119,8 @@ Inst:
     	$$ = node_children($2, $1, $3);
     }
 	// Conditions
-	| __IF__ OP_PAR BooleanExpression CL_PAR InstList {
-		$$ = node_children($1, $3, $5);
+	| __IF__ OP_PAR BooleanExpression CL_PAR OP_BRA InstList CL_BRA {
+		$$ = node_children($1, $3, $6);
 	}
 	;
 

@@ -95,6 +95,8 @@ variable [a-zA-Z]+
 
 "(" return(OP_PAR);
 ")" return(CL_PAR);
+"{" return(OP_BRA);
+"}" return(CL_BRA);
 
 "=" {
 	yylval.node = node_new(NTAFF);

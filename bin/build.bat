@@ -2,7 +2,7 @@
 
 call .\clean.bat
 
-bison -d ..\src\valti.y
+bison -d --report=state ..\src\valti.y
 rename valti.tab.h valti.h
 rename valti.tab.c valti.y.c
 
