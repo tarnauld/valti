@@ -2,3 +2,4 @@ bin/*.exe
 bin/*.h
 bin/*.c
 bin/*.o
+bin/valti
