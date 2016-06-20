@@ -46,7 +46,7 @@ exponent [eE][+-]?{integer}
 
 real {integer}("."{integer})?{exponent}?
 
-variable [a-zA-Z]+
+variable ([a-zA-Z]+[0-9_-]*[a-zA-Z]*)+
 
 %%
 

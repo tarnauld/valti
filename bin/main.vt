@@ -24,3 +24,6 @@ else {
     }
     echo(-3);
 }
+
+super_camelSnake123 = 42.00001;
+echo(super_camelSnake123);
