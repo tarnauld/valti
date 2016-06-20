@@ -31,7 +31,7 @@
 
 	Node *node_new(NodeType type);
 	Node *node_children(Node*, Node*, Node*);
-	void exec(Node*);
+	int exec(Node*);
 	int boolean_value(Node*);
 	double calculate_expression(Node*);
 	void tree_print(Node*, int);
@@ -70,14 +70,17 @@
 
 %type <node> InstList
 %type <node> Inst
+%type <node> ConditionnalInst
 %type <node> BooleanExpression
 %type <node> Expression
 
 %left PLUS MINUS
 %left MULTIPLY DIVIDE
 %left NEG
+
 %left IS_EQUAL IS_DIFFERENT IS_LOWER IS_GREATER IS_LOWER_EQUAL IS_GREATER_EQUAL
 %left BOOL_AND BOOL_OR
+
 %right POWER
 
 %start Input
@@ -92,7 +95,7 @@ Line:
 	END
 	| InstList END {
 		// Process the tree
-		tree_print($1, 0);
+		//tree_print($1, 0);
 		exec($1);
 		tree_free($1);
 	}
@@ -112,22 +115,34 @@ InstList:
 	;
 
 Inst:
+	// Affectation
+	VARIABLE AFFECT Expression COLON {
+		// Add the affectation in the tree
+		$$ = node_children($2, $1, $3);
+	}
 	// Echo
-	__ECHO__ OP_PAR Expression CL_PAR COLON {
+	| __ECHO__ OP_PAR Expression CL_PAR COLON {
 		$$ = node_children($1, $3, node_new(NTEMPTY));
 	}
-	// Affectation
-	| VARIABLE AFFECT Expression COLON {
-    	// Add the affectation in the tree
-    	$$ = node_children($2, $1, $3);
-    }
 	// Conditions
-	| __IF__ OP_PAR BooleanExpression CL_PAR OP_BRA InstList CL_BRA {
+	| ConditionnalInst {
+		$$ = $1;
+	}
+	;
+
+ConditionnalInst:
+	__IF__ OP_PAR BooleanExpression CL_PAR OP_BRA InstList CL_BRA {
 		$$ = node_children($1, $3, $6);
-	}
-	| __IF__ OP_PAR BooleanExpression CL_PAR OP_BRA InstList CL_BRA __ELSE__ OP_BRA InstList CL_BRA {
-		$$ = node_children($1, $3, node_children($8, $6, $10));
-	}
+	}/*
+	| __IF__ OP_PAR BooleanExpression CL_PAR Inst {
+		$$ = node_children($1, $3, $5);
+	}*/
+	| ConditionnalInst __ELSE__ OP_BRA InstList CL_BRA {
+		$$ = node_children($2, $1, $4);
+	}/*
+	| ConditionnalInst __ELSE__ Inst {
+		$$ = node_children($2, $1, $3);
+	}*/
 	;
 
 BooleanExpression:
@@ -238,7 +253,7 @@ Node *node_children(Node *father, Node *child1, Node *child2)
     return father;
 }
 
-void exec(Node *node)
+int exec(Node *node)
 {
 	double val;
 
@@ -264,25 +279,26 @@ void exec(Node *node)
 
 		case NTIF:
 			if(boolean_value(node->children[0])) {
-				// If the condition is evaluated as "true", then we execute the
-				// left part (if InstList) of its "else" structure
-				if(node->children[1]->type == NTELSE)
-					exec(node->children[1]->children[0]);
-				// If it has no "else" structure, we execute its child directely
-				else
-					exec(node->children[1]);
+				exec(node->children[1]);
+				// Returns 1 by default
 			}
-			// If the conditions has an "else" structure
-			else if(node->children[1]->type == NTELSE) {
-				// Then we exectue its right part (else InstList)
-				exec(node->children[1]->children[1]);
+			else {
+				return 0;
+			}
+			break;
+
+		case NTELSE:
+			if(!exec(node->children[0])) {
+				exec(node->children[1]);
 			}
 			break;
 
 		default:
-			printf("Syntax error.\n");
-			break;
+			printf("Syntax error (#%d).\n", node->type);
+			return 0;
 	}
+
+	return 1;
 }
 
 int boolean_value(Node *node)
