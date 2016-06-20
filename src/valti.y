@@ -52,7 +52,11 @@
 	void list_print(List*);
 
 	/* Global */
+	int parse_interpreter(void);
+	int parse_file(char*);
+
 	List *variables = NULL;
+	int DEBUG_MODE = 0;
 %}
 
 %union {
@@ -96,9 +100,13 @@ Line:
 	END
 	| InstList END {
 		// Process the tree
-		//tree_print($1, 0);
-		exec($1);
+		if(DEBUG_MODE)
+			tree_print($1, 0);
+
+		int code = exec($1);
 		tree_free($1);
+
+		return code;
 	}
 	;
 
@@ -230,33 +238,58 @@ int yyerror(char *s)
 {
 	printf("%s\n", s);
 	list_free(&variables);
-	return -1;
+	return 1;
 }
 
 int main(int argc, char **argv)
 {
-	FILE *src = NULL;
+	int code;
 
-	if((argc == 3) && (strcmp(argv[1], "-f") == 0))
+	if(argc >= 2)
 	{
-		src = fopen(argv[2], "r");
-		if(!src)
+		if(!strcmp(argv[1], "-d"))
 		{
-			printf("Unable to open the file.\n");
-			exit(-1);
+			DEBUG_MODE = 1;
+
+			if(argc == 3)
+				code = parse_file(argv[2]);
+			else
+				code = parse_interpreter();
 		}
-
-		yyin = src;
+		else
+			code = parse_file(argv[1]);
 	}
-
-	yyparse();
+	else
+		code = parse_interpreter();
 
 	// Cleanup
-	if(src)
-		fclose(src);
 	list_free(&variables);
+	return code;
+}
 
-	exit(0);
+int parse_interpreter(void)
+{
+	printf("<Valti Interpreter> (send Ctrl+Z signal to execute)\n");
+	return yyparse();
+}
+
+int parse_file(char *filepath)
+{
+	int code;
+	FILE *src = NULL;
+
+	src = fopen(filepath, "r");
+	if(!src)
+	{
+		printf("Unable to open the file.\n");
+		exit(-1);
+	}
+
+	yyin = src;
+	code = yyparse();
+	fclose(src);
+
+	return code;
 }
 
 /* Node */
@@ -287,7 +320,9 @@ int exec(Node *node)
 			val = calculate_expression(node->children[1]);
 			// Store a new variable in memory
 			list_add(&variables, node->children[0]->name, val);
-			printf("Affectation: %s = %f\n", node->children[0]->name, val);
+
+			if(DEBUG_MODE)
+				printf("Affectation: %s = %f\n", node->children[0]->name, val);
 			break;
 
 		case NTECHO:
@@ -297,15 +332,16 @@ int exec(Node *node)
 		case NTIF:
 			if(boolean_value(node->children[0])) {
 				exec(node->children[1]);
-				// Returns 1 by default
+				// Returns 0 by default
 			}
 			else {
-				return 0;
+				return 1;
 			}
 			break;
 
 		case NTELSE:
-			if(!exec(node->children[0])) {
+			// If the IF statement is not executed, then we execute the ELSE statement
+			if(exec(node->children[0]) == 1) {
 				exec(node->children[1]);
 			}
 			break;
@@ -324,10 +360,10 @@ int exec(Node *node)
 
 		default:
 			printf("Syntax error (#%d).\n", node->type);
-			return 0;
+			return -1;
 	}
 
-	return 1;
+	return 0;
 }
 
 int boolean_value(Node *node)

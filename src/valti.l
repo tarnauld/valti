@@ -1,4 +1,7 @@
 %option noyywrap
+%option nounput
+%option noinput
+
 %{
 	#include <stdlib.h>
 	#include <string.h>
@@ -35,13 +38,13 @@
 	}
 %}
 
-blank [ \t]+
+blank [ \t\n\r]+
 
-chiffre [0-9]
-entier {chiffre}+
-exposant [eE][+-]?{entier}
+digit [0-9]
+integer {digit}+
+exponent [eE][+-]?{integer}
 
-reel {entier}("."{entier})?{exposant}?
+real {integer}("."{integer})?{exponent}?
 
 variable [a-zA-Z]+
 
@@ -74,7 +77,7 @@ variable [a-zA-Z]+
 	return(__WHILE__);
 }
 
-{reel} {
+{real} {
 	yylval.node = node_new(NTNUM);
 	yylval.node->value = atof(yytext);
 	return(NUMBER);
@@ -161,4 +164,4 @@ variable [a-zA-Z]+
 
 ";" return (COLON);
 
-"\n" return(END);
+<<EOF>> return(END);
