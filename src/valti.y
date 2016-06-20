@@ -151,8 +151,14 @@ ConditionnalInst:
 	;
 
 LoopInst:
+	// While(...) {...}
 	__WHILE__ OP_PAR BooleanExpression CL_PAR OP_BRA InstList CL_BRA {
 		$$ = node_children($1, $3, $6);
+	}
+	// Do {...} While(...);
+	| __DO__ OP_BRA InstList CL_BRA __WHILE__ OP_PAR BooleanExpression CL_PAR COLON {
+		$$ = node_children($1, $7, $3);
+		free($5); // Free unused NTWHILE Node*
 	}
 	;
 
@@ -304,7 +310,11 @@ int exec(Node *node)
 			}
 			break;
 
-		case NTDO: break;
+		case NTDO:
+			do {
+				exec(node->children[1]);
+			} while(boolean_value(node->children[0]));
+			break;
 
 		case NTWHILE:
 			while(boolean_value(node->children[0])) {
