@@ -17,7 +17,7 @@
 		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF, // Operators
 		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE,// Boolean operators
 		NTAND, NTOR,
-		NTECHO, NTIF, NTELSE // Primary instructions
+		NTECHO, NTIF, NTELSE, NTDO, NTWHILE // Primary instructions
 	} NodeType;
 
 	typedef struct Node {
@@ -63,7 +63,7 @@
 %token <node> PLUS MINUS MULTIPLY DIVIDE POWER AFFECT
 %token <node> IS_EQUAL IS_DIFFERENT IS_LOWER IS_GREATER IS_LOWER_EQUAL IS_GREATER_EQUAL
 %token <node> BOOL_AND BOOL_OR
-%token <node> __ECHO__ __IF__ __ELSE__
+%token <node> __ECHO__ __IF__ __ELSE__ __DO__ __WHILE__
 
 %token OP_PAR CL_PAR OP_BRA CL_BRA COLON
 %token END
@@ -71,6 +71,7 @@
 %type <node> InstList
 %type <node> Inst
 %type <node> ConditionnalInst
+%type <node> LoopInst
 %type <node> BooleanExpression
 %type <node> Expression
 
@@ -128,6 +129,10 @@ Inst:
 	| ConditionnalInst {
 		$$ = $1;
 	}
+	// Loops
+	| LoopInst {
+		$$ = $1;
+	}
 	;
 
 ConditionnalInst:
@@ -143,6 +148,12 @@ ConditionnalInst:
 	| ConditionnalInst __ELSE__ Inst {
 		$$ = node_children($2, $1, $3);
 	}*/
+	;
+
+LoopInst:
+	__WHILE__ OP_PAR BooleanExpression CL_PAR OP_BRA InstList CL_BRA {
+		$$ = node_children($1, $3, $6);
+	}
 	;
 
 BooleanExpression:
@@ -293,6 +304,14 @@ int exec(Node *node)
 			}
 			break;
 
+		case NTDO: break;
+
+		case NTWHILE:
+			while(boolean_value(node->children[0])) {
+				exec(node->children[1]);
+			}
+			break;
+
 		default:
 			printf("Syntax error (#%d).\n", node->type);
 			return 0;
@@ -386,8 +405,12 @@ void tree_print(Node *node, int stage)
         case NTAFF: 	printf("="); break;
 
 		case NTECHO: 	printf("echo"); break;
+
 		case NTIF: 		printf("if"); break;
 		case NTELSE:	printf("else"); break;
+
+		case NTDO:		printf("do"); break;
+		case NTWHILE:	printf("while"); break;
 
 		case NTISEQ:	printf("=="); break;
 		case NTISDIFF:	printf("!="); break;

@@ -12,7 +12,7 @@
 		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF, // Operators
 		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE, // Boolean operators
 		NTAND, NTOR,
-		NTECHO, NTIF, NTELSE // Primary instructions
+		NTECHO, NTIF, NTELSE, NTDO, NTWHILE // Primary instructions
 	} NodeType;
 
 	typedef struct Node {
@@ -62,6 +62,16 @@ variable [a-zA-Z]+
 "else" {
 	yylval.node = node_new(NTELSE);
 	return(__ELSE__);
+}
+
+"do" {
+	yylval.node = node_new(NTDO);
+	return(__DO__);
+}
+
+"while" {
+	yylval.node = node_new(NTWHILE);
+	return(__WHILE__);
 }
 
 {reel} {

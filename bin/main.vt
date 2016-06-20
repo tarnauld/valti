@@ -1,4 +1,7 @@
-if(5 < 3 && 3 == 3) { echo(42); } else { echo(-42); } echo(3);
-if(5 < 3 && 3 == 3) {echo(42);} else {if(5 != 5) {echo(-3);} else {echo(28);}} echo(3);
+echo(1);
 
-echo (5/5);
+i = 3;
+
+while(i > 0) { echo(i); i = i - 1;}
+
+echo(2);
