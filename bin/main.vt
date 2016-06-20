@@ -10,14 +10,14 @@ do {
     i = i+1;
 } while(i < 3);
 
-
+/* Super Comment of Death */
 j = 5;
 
-if(j == 3) {
+if(j == 3) { // Starting a comment
     echo(3);
 }
 else {
-    if(j < 3) {
+    if(j < /* Sneaky comment \o */ 3) {
         echo(5);
     } else {
         echo(-5);
@@ -25,5 +25,6 @@ else {
     echo(-3);
 }
 
+// Just writin' some fun variabes
 super_camelSnake123 = 42.00001;
 echo(super_camelSnake123);

@@ -38,19 +38,20 @@
 	}
 %}
 
-blank [ \t\n\r]+
+blank [ \t\r\n]+
 
 digit [0-9]
 integer {digit}+
 exponent [eE][+-]?{integer}
-
 real {integer}("."{integer})?{exponent}?
 
 variable ([a-zA-Z]+[0-9_-]*[a-zA-Z]*)+
 
+comment (\/\*(.*)\*\/)|(\/\/.*[\r\n]+)
+
 %%
 
-{blank} { /* On ignore */ }
+{blank} { /* Ignore blanks */ }
 
 "echo" {
 	yylval.node = node_new(NTECHO);
@@ -165,3 +166,5 @@ variable ([a-zA-Z]+[0-9_-]*[a-zA-Z]*)+
 ";" return (COLON);
 
 <<EOF>> return(END);
+
+{comment} { /* Ignore comments */ }
