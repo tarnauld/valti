@@ -47,7 +47,7 @@ real {integer}("."{integer})?{exponent}?
 
 variable ([a-zA-Z]+[0-9_-]*[a-zA-Z]*)+
 
-comment (\/\*(.*)\*\/)|(\/\/.*[\r\n]+)
+comment (\/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+\/)|(\/\/.*[\r\n]+)
 
 %%
 

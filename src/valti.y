@@ -152,8 +152,8 @@ ConditionnalInst:
 	}*/
 	| ConditionnalInst __ELSE__ OP_BRA InstList CL_BRA {
 		$$ = node_children($2, $1, $4);
-	}/*
-	| ConditionnalInst __ELSE__ Inst {
+	}
+	/*| ConditionnalInst __ELSE__ Inst {
 		$$ = node_children($2, $1, $3);
 	}*/
 	;
