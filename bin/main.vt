@@ -1,1 +1,5 @@
-if(5 < 3 || 3 == 3) { echo(42); } echo(3);
+echo(5*5);
+
+if(5 < 3 && 3 == 3) { echo(42); } else { echo(-42); } echo(3);
+
+echo (5/5);

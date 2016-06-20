@@ -17,7 +17,7 @@
 		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF, // Operators
 		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE,// Boolean operators
 		NTAND, NTOR,
-		NTECHO, NTIF // Primary instructions
+		NTECHO, NTIF, NTELSE // Primary instructions
 	} NodeType;
 
 	typedef struct Node {
@@ -63,7 +63,7 @@
 %token <node> PLUS MINUS MULTIPLY DIVIDE POWER AFFECT
 %token <node> IS_EQUAL IS_DIFFERENT IS_LOWER IS_GREATER IS_LOWER_EQUAL IS_GREATER_EQUAL
 %token <node> BOOL_AND BOOL_OR
-%token <node> __ECHO__ __IF__
+%token <node> __ECHO__ __IF__ __ELSE__
 
 %token OP_PAR CL_PAR OP_BRA CL_BRA COLON
 %token END
@@ -124,6 +124,9 @@ Inst:
 	// Conditions
 	| __IF__ OP_PAR BooleanExpression CL_PAR OP_BRA InstList CL_BRA {
 		$$ = node_children($1, $3, $6);
+	}
+	| __IF__ OP_PAR BooleanExpression CL_PAR OP_BRA InstList CL_BRA __ELSE__ OP_BRA InstList CL_BRA {
+		$$ = node_children($1, $3, node_children($8, $6, $10));
 	}
 	;
 
@@ -260,8 +263,20 @@ void exec(Node *node)
 			break;
 
 		case NTIF:
-			if(boolean_value(node->children[0]))
-				exec(node->children[1]);
+			if(boolean_value(node->children[0])) {
+				// If the condition is evaluated as "true", then we execute the
+				// left part (if InstList) of its "else" structure
+				if(node->children[1]->type == NTELSE)
+					exec(node->children[1]->children[0]);
+				// If it has no "else" structure, we execute its child directely
+				else
+					exec(node->children[1]);
+			}
+			// If the conditions has an "else" structure
+			else if(node->children[1]->type == NTELSE) {
+				// Then we exectue its right part (else InstList)
+				exec(node->children[1]->children[1]);
+			}
 			break;
 
 		default:
@@ -356,6 +371,7 @@ void tree_print(Node *node, int stage)
 
 		case NTECHO: 	printf("echo"); break;
 		case NTIF: 		printf("if"); break;
+		case NTELSE:	printf("else"); break;
 
 		case NTISEQ:	printf("=="); break;
 		case NTISDIFF:	printf("!="); break;
