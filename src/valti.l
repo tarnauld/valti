@@ -20,6 +20,8 @@
 
 	typedef struct Node {
 	    NodeType type;
+		size_t children_count;
+
 	    union {
 	        double value;
 	        char *name;
@@ -33,6 +35,7 @@
 	    node->type = type;
 		node->name = NULL;
 	    node->children = NULL;
+		node->children_count = 0;
 
 	    return node;
 	}

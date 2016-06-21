@@ -1,6 +1,7 @@
 %{
 	#include <stdio.h>
 	#include <stdlib.h>
+	#include <stdarg.h>
 	#include <math.h>
 	#include <string.h>
 
@@ -22,6 +23,8 @@
 
 	typedef struct Node {
 	    NodeType type;
+		size_t children_count;
+
 	    union {
 	        double value;
 	        char *name;
@@ -30,7 +33,7 @@
 	} Node;
 
 	Node *node_new(NodeType type);
-	Node *node_children(Node*, Node*, Node*);
+	Node *node_children(Node*, size_t, Node*, ...);
 	int exec(Node*);
 	int boolean_value(Node*);
 	double calculate_expression(Node*);
@@ -112,14 +115,10 @@ Line:
 
 InstList:
 	Inst {
-		Node *inst = node_new(NTINST);
-		Node *empty = node_new(NTEMPTY);
-
-		$$ = node_children(inst, $1, empty);
+		$$ = node_children(node_new(NTINST), 1, $1);
 	}
 	| InstList Inst {
-		Node *inst = node_new(NTINST);
-		$$ = node_children(inst, $1, $2);
+		$$ = node_children(node_new(NTINST), 2, $1, $2);
 	}
 	;
 
@@ -127,11 +126,11 @@ Inst:
 	// Affectation
 	VARIABLE AFFECT Expression COLON {
 		// Add the affectation in the tree
-		$$ = node_children($2, $1, $3);
+		$$ = node_children($2, 2, $1, $3);
 	}
 	// Echo
 	| __ECHO__ OP_PAR Expression CL_PAR COLON {
-		$$ = node_children($1, $3, node_new(NTEMPTY));
+		$$ = node_children($1, 1, $3);
 	}
 	// Conditions
 	| ConditionnalInst {
@@ -145,55 +144,55 @@ Inst:
 
 ConditionnalInst:
 	__IF__ OP_PAR BooleanExpression CL_PAR OP_BRA InstList CL_BRA {
-		$$ = node_children($1, $3, $6);
+		$$ = node_children($1, 2, $3, $6);
 	}/*
 	| __IF__ OP_PAR BooleanExpression CL_PAR Inst {
-		$$ = node_children($1, $3, $5);
+		$$ = node_children($1, 2, $3, $5);
 	}*/
 	| ConditionnalInst __ELSE__ OP_BRA InstList CL_BRA {
-		$$ = node_children($2, $1, $4);
+		$$ = node_children($2, 2, $1, $4);
 	}
 	/*| ConditionnalInst __ELSE__ Inst {
-		$$ = node_children($2, $1, $3);
+		$$ = node_children($2, 2, $1, $3);
 	}*/
 	;
 
 LoopInst:
 	// While(...) {...}
 	__WHILE__ OP_PAR BooleanExpression CL_PAR OP_BRA InstList CL_BRA {
-		$$ = node_children($1, $3, $6);
+		$$ = node_children($1, 2, $3, $6);
 	}
 	// Do {...} While(...);
 	| __DO__ OP_BRA InstList CL_BRA __WHILE__ OP_PAR BooleanExpression CL_PAR COLON {
-		$$ = node_children($1, $7, $3);
+		$$ = node_children($1, 2, $7, $3);
 		free($5); // Free unused NTWHILE Node*
 	}
 	;
 
 BooleanExpression:
 	Expression IS_EQUAL Expression {
-		$$ = node_children($2, $1, $3);
+		$$ = node_children($2, 2, $1, $3);
 	}
 	| Expression IS_DIFFERENT Expression {
-		$$ = node_children($2, $1, $3);
+		$$ = node_children($2, 2, $1, $3);
 	}
 	| Expression IS_LOWER Expression {
-		$$ = node_children($2, $1, $3);
+		$$ = node_children($2, 2, $1, $3);
 	}
 	| Expression IS_GREATER Expression {
-		$$ = node_children($2, $1, $3);
+		$$ = node_children($2, 2, $1, $3);
 	}
 	| Expression IS_LOWER_EQUAL Expression {
-		$$ = node_children($2, $1, $3);
+		$$ = node_children($2, 2, $1, $3);
 	}
 	| Expression IS_GREATER_EQUAL Expression {
-		$$ = node_children($2, $1, $3);
+		$$ = node_children($2, 2, $1, $3);
 	}
 	| BooleanExpression BOOL_AND BooleanExpression {
-		$$ = node_children($2, $1, $3);
+		$$ = node_children($2, 2, $1, $3);
 	}
 	| BooleanExpression BOOL_OR BooleanExpression {
-		$$ = node_children($2, $1, $3);
+		$$ = node_children($2, 2, $1, $3);
 	}
 	| OP_PAR BooleanExpression CL_PAR {
 		$$ = $2;
@@ -208,23 +207,23 @@ Expression:
 		$$ = $1;
 	}
 	| Expression PLUS Expression {
-		$$ = node_children($2, $1, $3);
+		$$ = node_children($2, 2, $1, $3);
 	}
 	| Expression MINUS Expression {
-		$$ = node_children($2, $1, $3);
+		$$ = node_children($2, 2, $1, $3);
 	}
 	| Expression MULTIPLY Expression {
-		$$ = node_children($2, $1, $3);
+		$$ = node_children($2, 2, $1, $3);
 	}
 	| Expression DIVIDE Expression {
-		$$ = node_children($2, $1, $3);
+		$$ = node_children($2, 2, $1, $3);
 	}
 	| MINUS Expression %prec NEG {
 		$2->value = -($2->value);
 		$$ = $2;
 	}
 	| Expression POWER Expression {
-		$$ = node_children($2, $1, $3);
+		$$ = node_children($2, 2, $1, $3);
 	}
 	| OP_PAR Expression CL_PAR {
 		$$ = $2;
@@ -294,24 +293,33 @@ int parse_file(char *filepath)
 
 /* Node */
 
-Node *node_children(Node *father, Node *child1, Node *child2)
+Node *node_children(Node *father, size_t count, Node *child, ...)
 {
-    father->children = (Node**)malloc(sizeof(Node*) * 2);
-    father->children[0] = child1;
-    father->children[1] = child2;
+	va_list list;
+	int i;
+	Node *node;
+
+    father->children = (Node**)malloc(sizeof(Node*) * count);
+	father->children_count = count;
+
+	va_start(list, child);
+	for(i = 0, node = child ; i < count ; i++, node = va_arg(list, Node*))
+		father->children[i] = node;
+	va_end(list);
 
     return father;
 }
 
 int exec(Node *node)
 {
+	int i;
 	double val;
 
 	switch(node->type)
 	{
 		case NTINST:
-			exec(node->children[0]);
-			exec(node->children[1]);
+			for(i = 0 ; i < node->children_count ; i++)
+				exec(node->children[i]);
 			break;
 		case NTEMPTY: break;
 
@@ -479,10 +487,12 @@ void tree_print(Node *node, int stage)
 
 void tree_free(Node *node)
 {
-	if(node->children && node->type != NTVAR && node->type != NTNUM)
+	if(node->children && node->type != NTVAR && node->type != NTNUM && node->children_count > 0)
 	{
-		tree_free(node->children[0]);
-		tree_free(node->children[1]);
+		int i;
+
+		for(i = 0 ; i < node->children_count ; i++)
+			tree_free(node->children[i]);
 	}
 
 	// The node->name is already free in list_free
