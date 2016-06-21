@@ -13,7 +13,7 @@
 	/* Node */
 
 	typedef enum NodeType {
-		NTINST, NTEMPTY, // Handle instructions
+		NTINST, // Handle instructions
 	    NTNUM, NTVAR, // Value or variable?
 		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF, // Operators
 		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE,// Boolean operators
@@ -145,16 +145,17 @@ Inst:
 ConditionnalInst:
 	__IF__ OP_PAR BooleanExpression CL_PAR OP_BRA InstList CL_BRA {
 		$$ = node_children($1, 2, $3, $6);
-	}/*
-	| __IF__ OP_PAR BooleanExpression CL_PAR Inst {
-		$$ = node_children($1, 2, $3, $5);
-	}*/
+	}
 	| ConditionnalInst __ELSE__ OP_BRA InstList CL_BRA {
 		$$ = node_children($2, 2, $1, $4);
 	}
-	/*| ConditionnalInst __ELSE__ Inst {
+	/*/ TODO: One-inst conditions
+	| __IF__ OP_PAR BooleanExpression CL_PAR Inst {
+		$$ = node_children($1, 2, $3, $5);
+	}
+	| ConditionnalInst __ELSE__ Inst {
 		$$ = node_children($2, 2, $1, $3);
-	}*/
+	}//*/
 	;
 
 LoopInst:
@@ -321,7 +322,6 @@ int exec(Node *node)
 			for(i = 0 ; i < node->children_count ; i++)
 				exec(node->children[i]);
 			break;
-		case NTEMPTY: break;
 
 		case NTAFF:
 			// We ignore the left (NTVAR) part of the tree when processing an = (NTAFF) node.
@@ -447,7 +447,6 @@ void tree_print(Node *node, int stage)
     switch(node->type)
     {
 		case NTINST: 	printf("{"); break;
-		case NTEMPTY:	printf("}"); break;
 
         case NTNUM: 	printf("%.2lf", node->value); break;
         case NTVAR: 	printf("%s", node->name); break;
@@ -478,10 +477,10 @@ void tree_print(Node *node, int stage)
     }
     printf("\n");
 
-    if(node->children && node->type != NTVAR && node->type != NTNUM)
+    if(node->children && node->type != NTVAR && node->type != NTNUM && node->children_count > 0)
     {
-        tree_print(node->children[0], stage + 1);
-        tree_print(node->children[1], stage + 1);
+		for(i = 0 ; i < node->children_count ; i++)
+        	tree_print(node->children[i], stage + 1);
     }
 }
 

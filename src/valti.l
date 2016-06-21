@@ -10,7 +10,7 @@
 	/* Node */
 
 	typedef enum NodeType {
-		NTINST, NTEMPTY, // Handle instructions
+		NTINST, // Handle instructions
 	    NTNUM, NTVAR, // Value or variable?
 		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF, // Operators
 		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE, // Boolean operators
