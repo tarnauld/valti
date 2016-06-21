@@ -12,10 +12,11 @@
 	typedef enum NodeType {
 		NTINST, // Handle instructions
 	    NTNUM, NTVAR, // Value or variable?
-		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF, // Operators
+		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTMOD, NTAFF, // Operators
 		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE, // Boolean operators
 		NTAND, NTOR,
-		NTECHO, NTIF, NTELIF, NTELSE, NTDO, NTWHILE, NTFOR // Primary instructions
+		NTECHO, NTIF, NTELIF, NTELSE, NTDO, NTWHILE, NTFOR, // Primary instructions
+		NTPLUSEQ, NTMINEQ, NTMULTEQ, NTDIVEQ, NTPOWEQ, NTMODEQ // Modulo & calculated affectation
 	} NodeType;
 
 	typedef struct Node {
@@ -107,6 +108,7 @@ comment (\/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+\/)|(\/\/.*[\r\n]+)
 	yylval.node = node_new(NTPLUS);
 	return(PLUS);
 }
+
 "-" {
 	yylval.node = node_new(NTMIN);
 	return(MINUS);
@@ -126,10 +128,40 @@ comment (\/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+\/)|(\/\/.*[\r\n]+)
 	return(POWER);
 }
 
-"(" return(OP_PAR);
-")" return(CL_PAR);
-"{" return(OP_BRA);
-"}" return(CL_BRA);
+"%" {
+	yylval.node = node_new(NTMOD);
+	return(MODULO);
+}
+
+"+=" {
+	yylval.node = node_new(NTPLUSEQ);
+	return(PLUS_EQ);
+}
+
+"-=" {
+	yylval.node = node_new(NTMINEQ);
+	return(MINUS_EQ);
+}
+
+"*=" {
+	yylval.node = node_new(NTMULTEQ);
+	return(MULTIPLY_EQ);
+}
+
+"/=" {
+	yylval.node = node_new(NTDIVEQ);
+	return(DIVIDE_EQ);
+}
+
+"^=" {
+	yylval.node = node_new(NTPOWEQ);
+	return(POWER_EQ);
+}
+
+"%=" {
+	yylval.node = node_new(NTMODEQ);
+	return(MODULO_EQ);
+}
 
 "=" {
 	yylval.node = node_new(NTAFF);
@@ -176,9 +208,14 @@ comment (\/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+\/)|(\/\/.*[\r\n]+)
 	return(BOOL_OR);
 }
 
+"(" return(OP_PAR);
+")" return(CL_PAR);
+"{" return(OP_BRA);
+"}" return(CL_BRA);
+
 ";" return (COLON);
 "," return(COMMA);
 
-<<EOF>> return(END);
-
 {comment} { /* Ignore comments */ }
+
+<<EOF>> return(END);

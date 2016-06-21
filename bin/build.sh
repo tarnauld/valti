@@ -11,4 +11,4 @@ gcc -c valti.y.c -o valti.y.o -Wall
 gcc -o valti valti.lex.o valti.y.o -Wall
 
 clear
-./valti main.vt
+./valti -d main.vt

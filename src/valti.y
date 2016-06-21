@@ -15,10 +15,11 @@
 	typedef enum NodeType {
 		NTINST, // Handle instructions
 	    NTNUM, NTVAR, // Value or variable?
-		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF, // Operators
-		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE,// Boolean operators
+		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTMOD, NTAFF, // Operators
+		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE, // Boolean operators
 		NTAND, NTOR,
-		NTECHO, NTIF, NTELIF, NTELSE, NTDO, NTWHILE, NTFOR // Primary instructions
+		NTECHO, NTIF, NTELIF, NTELSE, NTDO, NTWHILE, NTFOR, // Primary instructions
+		NTPLUSEQ, NTMINEQ, NTMULTEQ, NTDIVEQ, NTPOWEQ, NTMODEQ // Modulo & calculated affectation
 	} NodeType;
 
 	typedef struct Node {
@@ -67,7 +68,8 @@
 }
 
 %token <node> NUMBER VARIABLE
-%token <node> PLUS MINUS MULTIPLY DIVIDE POWER AFFECT
+%token <node> PLUS MINUS MULTIPLY DIVIDE POWER MODULO AFFECT
+%token <node> PLUS_EQ MINUS_EQ MULTIPLY_EQ DIVIDE_EQ POWER_EQ MODULO_EQ
 %token <node> IS_EQUAL IS_DIFFERENT IS_LOWER IS_GREATER IS_LOWER_EQUAL IS_GREATER_EQUAL
 %token <node> BOOL_AND BOOL_OR
 %token <node> __ECHO__ __IF__ __ELIF__ __ELSE__ __DO__ __WHILE__ __FOR__
@@ -81,11 +83,12 @@
 %type <node> ConditionnalInst
 %type <node> LoopInst
 %type <node> BooleanExpression
+%type <node> AffectationList
 %type <node> Affectation
 %type <node> Expression
 
 %left PLUS MINUS
-%left MULTIPLY DIVIDE
+%left MULTIPLY DIVIDE MODULO
 %left NEG
 
 %left IS_EQUAL IS_DIFFERENT IS_LOWER IS_GREATER IS_LOWER_EQUAL IS_GREATER_EQUAL
@@ -109,8 +112,11 @@ Line:
 			tree_print($1, 0);
 
 		int code = exec($1);
-		tree_free($1);
 
+		if(DEBUG_MODE)
+			list_print(variables);
+
+		tree_free($1);
 		return code;
 	}
 	;
@@ -126,7 +132,7 @@ InstList:
 
 Inst:
 	// Affectation
-	Affectation COLON {
+	AffectationList COLON {
 		$$ = $1;
 	}
 	// Echo
@@ -178,7 +184,7 @@ LoopInst:
 		$$ = node_children($1, 2, $7, $3);
 		free($5); // Free unused NTWHILE Node*
 	}
-	| __FOR__ OP_PAR Affectation COLON BooleanExpression COLON Affectation CL_PAR OP_BRA InstList CL_BRA {
+	| __FOR__ OP_PAR AffectationList COLON BooleanExpression COLON AffectationList CL_PAR OP_BRA InstList CL_BRA {
 		$$ = node_children($1, 4, $3, $5, $7, $10);
 	}
 	;
@@ -213,13 +219,37 @@ BooleanExpression:
 	}
 	;
 
+AffectationList:
+	Affectation {
+		$$ = $1;
+	}
+	| AffectationList COMMA Affectation {
+		$$ = node_children(node_new(NTINST), 2, $1, $3);
+	}
+	;
+
 Affectation:
 	VARIABLE AFFECT Expression {
 		// Add the affectation in the tree
 		$$ = node_children($2, 2, $1, $3);
 	}
-	| VARIABLE AFFECT Expression COMMA Affectation {
-		$$ = node_children(node_new(NTINST), 2, node_children($2, 2, $1, $3), $5);
+	| VARIABLE PLUS_EQ Expression {
+		$$ = node_children(node_new(NTAFF), 2, $1, node_children(node_new(NTPLUS), 2, $1, $3));
+	}
+	| VARIABLE MINUS_EQ Expression {
+		$$ = node_children(node_new(NTAFF), 2, $1, node_children(node_new(NTMIN), 2, $1, $3));
+	}
+	| VARIABLE MULTIPLY_EQ Expression {
+		$$ = node_children(node_new(NTAFF), 2, $1, node_children(node_new(NTMULT), 2, $1, $3));
+	}
+	| VARIABLE DIVIDE_EQ Expression {
+		$$ = node_children(node_new(NTAFF), 2, $1, node_children(node_new(NTDIV), 2, $1, $3));
+	}
+	| VARIABLE POWER_EQ Expression {
+		$$ = node_children(node_new(NTAFF), 2, $1, node_children(node_new(NTPOW), 2, $1, $3));
+	}
+	| VARIABLE MODULO_EQ Expression {
+		$$ = node_children(node_new(NTAFF), 2, $1, node_children(node_new(NTMOD), 2, $1, $3));
 	}
 	;
 
@@ -247,6 +277,9 @@ Expression:
 		$$ = $2;
 	}
 	| Expression POWER Expression {
+		$$ = node_children($2, 2, $1, $3);
+	}
+	| Expression MODULO Expression {
 		$$ = node_children($2, 2, $1, $3);
 	}
 	| OP_PAR Expression CL_PAR {
@@ -460,6 +493,10 @@ double calculate_expression(Node *node)
             return pow(calculate_expression(node->children[0]), calculate_expression(node->children[1]));
             break;
 
+		case NTMOD:
+			return fmod(calculate_expression(node->children[0]), calculate_expression(node->children[1]));
+			break;
+
 		default:
 			return -1.;
 			break;
@@ -480,12 +517,21 @@ void tree_print(Node *node, int stage)
 
         case NTNUM: 	printf("%.2lf", node->value); break;
         case NTVAR: 	printf("%s", node->name); break;
+
         case NTPLUS: 	printf("+"); break;
 		case NTMIN: 	printf("-"); break;
         case NTMULT:	printf("*"); break;
         case NTDIV: 	printf("/"); break;
         case NTPOW: 	printf("^"); break;
+		case NTMOD:		printf("%%"); break;
         case NTAFF: 	printf("="); break;
+
+        case NTPLUSEQ: 	printf("+="); break;
+		case NTMINEQ: 	printf("-="); break;
+        case NTMULTEQ:	printf("*="); break;
+        case NTDIVEQ: 	printf("/="); break;
+        case NTPOWEQ: 	printf("^="); break;
+		case NTMODEQ:		printf("%%="); break;
 
 		case NTECHO: 	printf("echo"); break;
 
