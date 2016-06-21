@@ -1,44 +1,178 @@
 %option noyywrap
+%option nounput
+%option noinput
+
 %{
-	#include "valti.h"
 	#include <stdlib.h>
+	#include <string.h>
+	#include "valti.h"
+
+	/* Node */
+
+	typedef enum NodeType {
+		NTINST, // Handle instructions
+	    NTNUM, NTVAR, // Value or variable?
+		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF, // Operators
+		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE, // Boolean operators
+		NTAND, NTOR,
+		NTECHO, NTIF, NTELIF, NTELSE, NTDO, NTWHILE // Primary instructions
+	} NodeType;
+
+	typedef struct Node {
+	    NodeType type;
+		size_t children_count;
+
+	    union {
+	        double value;
+	        char *name;
+	        struct Node **children;
+	    };
+	} Node;
+
+	Node *node_new(NodeType type)
+	{
+	    Node *node = (Node*)malloc(sizeof(Node));
+	    node->type = type;
+		node->name = NULL;
+	    node->children = NULL;
+		node->children_count = 0;
+
+	    return node;
+	}
 %}
 
-blank [ \t]+
+blank [ \t\r\n]+
 
-chiffre [0-9]
-entier {chiffre}+
-exposant [eE][+-]?{entier}
+digit [0-9]
+integer {digit}+
+exponent [eE][+-]?{integer}
+real {integer}("."{integer})?{exponent}?
 
-reel {entier}("."{entier})?{exposant}?
+variable ([a-zA-Z]+[0-9_-]*[a-zA-Z]*)+
 
-variable [a-zA-Z]+
+comment (\/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+\/)|(\/\/.*[\r\n]+)
 
 %%
 
-{blank} { /* On ignore */ }
+{blank} { /* Ignore blanks */ }
 
-{reel} {
-	yylval.val = atof(yytext);
-	return(NOMBRE);
+"echo" {
+	yylval.node = node_new(NTECHO);
+	return(__ECHO__);
+}
+
+"if" {
+	yylval.node = node_new(NTIF);
+	return(__IF__);
+}
+
+"elif" {
+	yylval.node = node_new(NTELIF);
+	return(__ELIF__);
+}
+
+"else" {
+	yylval.node = node_new(NTELSE);
+	return(__ELSE__);
+}
+
+"do" {
+	yylval.node = node_new(NTDO);
+	return(__DO__);
+}
+
+"while" {
+	yylval.node = node_new(NTWHILE);
+	return(__WHILE__);
+}
+
+{real} {
+	yylval.node = node_new(NTNUM);
+	yylval.node->value = atof(yytext);
+	return(NUMBER);
 }
 
 {variable} {
-	yylval.var = (char*)_strdup(yytext);
+	yylval.node = node_new(NTVAR);
+	yylval.node->name = strdup(yytext);
 	return(VARIABLE);
 }
 
-"+" return(PLUS);
-"-" return(MOINS);
+"+" {
+	yylval.node = node_new(NTPLUS);
+	return(PLUS);
+}
+"-" {
+	yylval.node = node_new(NTMIN);
+	return(MINUS);
+}
 
-"*" return(FOIS);
-"/" return(DIVISE);
+"*" {
+	yylval.node = node_new(NTMULT);
+	return(MULTIPLY);
+}
+"/" {
+	yylval.node = node_new(NTDIV);
+	return(DIVIDE);
+}
 
-"^" return(PUISSANCE);
+"^" {
+	yylval.node = node_new(NTPOW);
+	return(POWER);
+}
 
-"(" return(PARENTHESE_GAUCHE);
-")" return(PARENTHESE_DROITE);
+"(" return(OP_PAR);
+")" return(CL_PAR);
+"{" return(OP_BRA);
+"}" return(CL_BRA);
 
-"=" return(EGAL);
+"=" {
+	yylval.node = node_new(NTAFF);
+	return(AFFECT);
+}
 
-"\n" return(FIN);
+"==" {
+	yylval.node = node_new(NTISEQ);
+	return(IS_EQUAL);
+}
+
+"!=" {
+	yylval.node = node_new(NTISDIFF);
+	return(IS_DIFFERENT);
+}
+
+"<" {
+	yylval.node = node_new(NTISLT);
+	return(IS_LOWER);
+}
+
+">" {
+	yylval.node = node_new(NTISGT);
+	return(IS_GREATER);
+}
+
+"<=" {
+	yylval.node = node_new(NTISLE);
+	return(IS_LOWER_EQUAL);
+}
+
+">=" {
+	yylval.node = node_new(NTISGE);
+	return(IS_GREATER_EQUAL);
+}
+
+"&&" {
+	yylval.node = node_new(NTAND);
+	return(BOOL_AND);
+}
+
+"||" {
+	yylval.node = node_new(NTOR);
+	return(BOOL_OR);
+}
+
+";" return (COLON);
+
+<<EOF>> return(END);
+
+{comment} { /* Ignore comments */ }
