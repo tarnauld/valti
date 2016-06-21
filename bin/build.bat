@@ -15,6 +15,6 @@ gcc -o valti valti.lex.o valti.y.o -Wall
 pause
 
 cls
-call valti.exe main.vt
+call valti.exe -d main.vt
 
 pause

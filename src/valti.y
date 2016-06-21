@@ -11,7 +11,6 @@
 	extern FILE *yyin;
 
 	/* Node */
-
 	typedef enum NodeType {
 		NTINST, // Handle instructions
 	    NTNUM, NTVAR, // Value or variable?
@@ -40,25 +39,42 @@
 	void tree_print(Node*, int);
 	void tree_free(Node*);
 
-	/* List */
-	typedef struct list {
-	    char *name;
-	    double value;
+	/* HashMap */
+	typedef struct MapEntry {
+		char *key;
+		void *value;
+		size_t size;
 
-	    struct list *next;
-	} List;
+		struct MapEntry *next;
+	} MapEntry;
 
-	List *list_new(char*, double);
-	void list_add(List**, char*, double);
-	void list_free(List**);
-	List *list_get(List*, char*);
-	void list_print(List*);
+	MapEntry *map_entry_create(char*, void*, size_t);
+	void map_entry_set(MapEntry*, void*, size_t);
+	MapEntry *map_entry_get(MapEntry*, char*);
+	void map_entry_append(MapEntry**, char*, void*, size_t);
+	void map_entry_free(MapEntry**);
+
+	typedef struct HashMap {
+		MapEntry **entries;
+		float load_factor;
+		float grow_factor;
+		size_t slots; // Nombre de listes chaînées allouées par défaut
+		size_t size;
+	} HashMap;
+
+	HashMap *map_create(size_t, float, float);
+	int map_hashcode(char*);
+	void map_put(HashMap*, char*, void*, size_t);
+	void *map_get(HashMap*, char*);
+	void map_remove(HashMap*, char*);
+	void map_free(HashMap**);
+	void map_print(HashMap*);
 
 	/* Global */
 	int parse_interpreter(void);
 	int parse_file(char*);
 
-	List *variables = NULL;
+	HashMap *variables = NULL;
 	int DEBUG_MODE = 0;
 %}
 
@@ -113,7 +129,7 @@ Line:
 		int code = exec($1);
 
 		if(DEBUG_MODE)
-			list_print(variables);
+			map_print(variables);
 
 		tree_free($1);
 		return code;
@@ -292,13 +308,14 @@ Expression:
 int yyerror(char *s)
 {
 	printf("%s\n", s);
-	list_free(&variables);
+	map_free(&variables);
 	return 1;
 }
 
 int main(int argc, char **argv)
 {
 	int code;
+	variables = map_create(10, 0.7, 2);
 
 	if(argc >= 2)
 	{
@@ -318,7 +335,7 @@ int main(int argc, char **argv)
 		code = parse_interpreter();
 
 	// Cleanup
-	list_free(&variables);
+	map_free(&variables);
 	return code;
 }
 
@@ -382,10 +399,10 @@ int exec(Node *node)
 			// We ignore the left (NTVAR) part of the tree when processing an = (NTAFF) node.
 			val = calculate_expression(node->children[1]);
 			// Store a new variable in memory
-			list_add(&variables, node->children[0]->name, val);
+			map_put(variables, node->children[0]->name, &val, sizeof(val));
 
 			if(DEBUG_MODE)
-				printf("Affectation: %s = %f\n", node->children[0]->name, val);
+				printf("// Affectation: %s = %f\n", node->children[0]->name, val);
 			break;
 
 		case NTECHO:
@@ -456,7 +473,7 @@ int boolean_value(Node *node)
 double calculate_expression(Node *node)
 {
 	// Temp variables
-	List *var = NULL;
+	double *var = NULL;
 
     switch(node->type)
     {
@@ -465,10 +482,10 @@ double calculate_expression(Node *node)
             break;
 
 		case NTVAR:
-			var = list_get(variables, node->name);
+			var = map_get(variables, node->name);
 
 			if(var)
-				return var->value;
+				return *var;
 			printf("Unknown variable: %s\n", node->name);
 			break;
 
@@ -564,79 +581,278 @@ void tree_free(Node *node)
 			tree_free(node->children[i]);
 	}
 
-	// The node->name is already free in list_free
+	if(node->type == NTVAR)
+		free(node->name);
 	free(node);
 }
 
-/* List */
+/* HashMap */
 
-List *list_new(char *name, double value)
+MapEntry *map_entry_create(char *key, void *value, size_t size)
 {
-    List *list = malloc(sizeof(List));
+	MapEntry *entry = (MapEntry*)malloc(sizeof(MapEntry));
 
-    if(list)
-    {
-        list->name = name;
-        list->value = value;
-        list->next = NULL;
-    }
+	if(entry)
+	{
+		entry->key = strdup(key);
+		map_entry_set(entry, value, size);
+		entry->next = NULL;
+	}
 
-    return list;
+	return entry;
 }
 
-void list_add(List **list, char *name, double value)
+void map_entry_set(MapEntry *entry, void *value, size_t size)
 {
-    if(list)
-    {
-        int i, size = strlen(name);
-        char *str = malloc((size + 1) * sizeof(char));
-        List *tmp = NULL;
+	if(!entry || !value)
+		return;
 
-        for(i = 0 ; i < size ; i++)
-            str[i] = name[i];
-        str[i] = '\0';
+	if(entry->value)
+		free(entry->value);
 
-        tmp = list_new(str, value);
-
-        if(*list)
-            tmp->next = *list;
-        *list = tmp;
-    }
+	entry->value = malloc(size);
+	entry->size = size;
+	memcpy(entry->value, value, size);
 }
 
-void list_free(List **list)
+MapEntry *map_entry_get(MapEntry *entries, char *key)
 {
-    if(list)
-    {
-        while(*list)
-        {
-            List *tmp = (*list)->next;
+	while(entries)
+	{
+		if(!strcmp(entries->key, key))
+			return entries;
 
-            free((*list)->name);
-            free(*list);
+		entries = entries->next;
+	}
 
-            *list = tmp;
-        }
-    }
+	return NULL;
 }
 
-List *list_get(List *list, char *name)
+void map_entry_append(MapEntry **entries, char *key, void *value, size_t size)
 {
-    while(list)
-    {
-        if(strcmp(list->name, name) == 0)
-            return list;
-        list = list->next;
-    }
-
-    return NULL;
+	while(*entries)
+		entries = &(*entries)->next;
+	*entries = map_entry_create(key, value, size);
 }
 
-void list_print(List *list)
+void map_entry_free(MapEntry **entries)
 {
-    while(list)
-    {
-        printf("%s = %lf\n", list->name, list->value);
-        list = list->next;
-    }
+	if(!entries)
+		return;
+
+	while(*entries)
+	{
+		MapEntry *tmp = (*entries)->next;
+
+		free((*entries)->key);
+		free((*entries)->value);
+		free(*entries);
+
+		*entries = tmp;
+	}
+
+	*entries = NULL;
+}
+
+HashMap *map_create(size_t slots, float load_factor, float grow_factor)
+{
+	HashMap *map = (HashMap*)malloc(sizeof(HashMap));
+
+	if(map)
+	{
+		map->entries = (MapEntry**)calloc(slots, sizeof(MapEntry*));
+		map->slots = slots;
+		map->size = 0;
+		map->load_factor = load_factor;
+		map->grow_factor = grow_factor;
+	}
+
+	return map;
+}
+
+void map_grow(HashMap *map)
+{
+	int i;
+	int slots = map->slots * map->grow_factor;
+	MapEntry **tmp = (MapEntry**)calloc(slots, sizeof(MapEntry*));
+
+	// Replacer les éléments et libérer la mémoire de l'ancienne liste
+	for(i = 0 ; i < map->slots ; i++)
+	{
+		MapEntry *entries = map->entries[i];
+
+		if(entries)
+		{
+			while(entries)
+			{
+				int index = map_hashcode(entries->key) % slots;
+				map_entry_append(&(tmp[index]), entries->key, entries->value, entries->size);
+				entries = entries->next;
+			}
+
+			map_entry_free(&entries);
+		}
+	}
+	free(map->entries);
+
+	// Assigner les nouvelles valeurs
+	map->entries = tmp;
+	map->slots = slots;
+}
+
+int map_hashcode(char *key)
+{
+	int i, hash = 0;
+
+	for(i = 0 ; key && *key != '\0' ; i++)
+	{
+		hash += *key * (i + 1);
+		key++;
+	}
+
+	return hash;
+}
+
+void map_put(HashMap *map, char *key, void *value, size_t size)
+{
+	if(!map || !key || !value)
+		return;
+
+	int index = map_hashcode(key) % map->slots;
+	MapEntry *entry = map_entry_get(map->entries[index], key);
+
+	// Si la clé existe déjà
+	if(entry)
+		map_entry_set(entry, value, size);
+	// Sinon, on l'ajoute simplement
+	else
+	{
+		// Si nécessaire, on resize notre map et on recalcule l'index
+		if(map->size >= map->slots * map->load_factor)
+		{
+			map_grow(map);
+			index = map_hashcode(key) % map->slots;
+		}
+
+		map_entry_append(&(map->entries[index]), key, value, size);
+		map->size++;
+	}
+
+	// Correction
+	/*if(map)
+	{
+		int index = map_hashcode(key) % map->slots;
+		MapEntry **entries = &(map->entries[index]);
+
+		while(*entries)
+		{
+			if(!strcmp((*entries)->key, key))
+			{
+				(*entries)->value = value;
+				return;
+			}
+
+			entries = &((*entries)->next);
+		}
+
+		*entries = map_entry_create(key, value, size);
+		map->size++;
+	}*/
+}
+
+void *map_get(HashMap *map, char *key)
+{
+	if(!map || !key)
+		return NULL;
+
+	int index = map_hashcode(key) % map->slots;
+	MapEntry *entry = map_entry_get(map->entries[index], key);
+
+	if(entry)
+		return entry->value;
+	return NULL;
+
+	// Correction
+	/*if(map)
+	{
+		int index = map_hashcode(key) % map->slots;
+		MapEntry **entries = &(map->entries[index]);
+
+		while(*entries)
+		{
+			if(!strcmp((*entries)->key, key))
+				return (*entries)->value;
+
+			entries = &((*entries)->next);
+		}
+	}
+
+	return NULL;*/
+}
+
+void map_remove(HashMap *map, char *key)
+{
+	if(!map || !key)
+		return;
+
+	int index = map_hashcode(key) % map->slots;
+	MapEntry **entries = &(map->entries[index]);
+
+	while(*entries)
+	{
+		if(!strcmp((*entries)->key, key))
+		{
+			MapEntry *tmp = (*entries)->next;
+
+			free((*entries)->key);
+			free((*entries)->value);
+			free(*entries);
+
+			*entries = tmp;
+			map->size--;
+			break;
+		}
+
+		*entries = (*entries)->next;
+	}
+}
+
+void map_free(HashMap **map)
+{
+	int i;
+
+	if(!map || !*map)
+		return;
+
+	for(i = 0 ; i < (*map)->slots ; i++)
+		map_entry_free(&((*map)->entries[i]));
+
+	free((*map)->entries);
+	free(*map);
+	*map = NULL;
+}
+
+void map_print(HashMap *map)
+{
+	int i;
+
+	printf("\n<Valti Variables Store>\n");
+	for(i = 0 ; i < map->slots ; i++)
+	{
+		MapEntry *entries = map->entries[i];
+
+		while(entries)
+		{
+			printf("%s: ", entries->key);
+
+			if(entries->size == 8)
+				printf("%lf\n", *(double*)entries->value);
+			else if(entries->size > 8)
+				printf("\"%s\"\n", (char*)entries->value);
+			else
+				printf("Unknown variable type... (%u bytes)\n", entries->size);
+
+			entries = entries->next;
+		}
+	}
 }
