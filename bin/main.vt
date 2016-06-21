@@ -1,5 +1,5 @@
-i = 3;
-
+i = 3, j = 5, k = 0;
+echo(k);
 while(i > 0) {
     echo(i);
     i = i - 1;
@@ -13,8 +13,6 @@ do {
 /**
  * Super Comment of Death
  */
-j = 5;
-
 if(j == 3) { // Starting a comment
     echo(3);
 }
@@ -32,6 +30,6 @@ else {
 super_camelSnake123 = 42.000001;
 echo(super_camelSnake123);
 
-for(k = 0 ; k < super_camelSnake123 ; k = k+1) {
+for(l = 1 ; k < super_camelSnake123 ; k = k+1, l = l+1) {
     echo(k);
 }

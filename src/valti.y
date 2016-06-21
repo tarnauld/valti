@@ -218,6 +218,9 @@ Affectation:
 		// Add the affectation in the tree
 		$$ = node_children($2, 2, $1, $3);
 	}
+	| VARIABLE AFFECT Expression COMMA Affectation {
+		$$ = node_children(node_new(NTINST), 2, node_children($2, 2, $1, $3), $5);
+	}
 	;
 
 Expression:
