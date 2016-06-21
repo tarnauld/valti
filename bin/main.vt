@@ -31,3 +31,7 @@ else {
 // Just writin' some fun variabes
 super_camelSnake123 = 42.000001;
 echo(super_camelSnake123);
+
+for(k = 0 ; k < super_camelSnake123 ; k = k+1) {
+    echo(k);
+}

@@ -18,7 +18,7 @@
 		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF, // Operators
 		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE,// Boolean operators
 		NTAND, NTOR,
-		NTECHO, NTIF, NTELIF, NTELSE, NTDO, NTWHILE // Primary instructions
+		NTECHO, NTIF, NTELIF, NTELSE, NTDO, NTWHILE, NTFOR // Primary instructions
 	} NodeType;
 
 	typedef struct Node {
@@ -70,9 +70,9 @@
 %token <node> PLUS MINUS MULTIPLY DIVIDE POWER AFFECT
 %token <node> IS_EQUAL IS_DIFFERENT IS_LOWER IS_GREATER IS_LOWER_EQUAL IS_GREATER_EQUAL
 %token <node> BOOL_AND BOOL_OR
-%token <node> __ECHO__ __IF__ __ELIF__ __ELSE__ __DO__ __WHILE__
+%token <node> __ECHO__ __IF__ __ELIF__ __ELSE__ __DO__ __WHILE__ __FOR__
 
-%token OP_PAR CL_PAR OP_BRA CL_BRA COLON
+%token OP_PAR CL_PAR OP_BRA CL_BRA COLON COMMA
 %token END
 
 %type <node> InstList
@@ -81,6 +81,7 @@
 %type <node> ConditionnalInst
 %type <node> LoopInst
 %type <node> BooleanExpression
+%type <node> Affectation
 %type <node> Expression
 
 %left PLUS MINUS
@@ -125,9 +126,8 @@ InstList:
 
 Inst:
 	// Affectation
-	VARIABLE AFFECT Expression COLON {
-		// Add the affectation in the tree
-		$$ = node_children($2, 2, $1, $3);
+	Affectation COLON {
+		$$ = $1;
 	}
 	// Echo
 	| __ECHO__ OP_PAR Expression CL_PAR COLON {
@@ -178,6 +178,9 @@ LoopInst:
 		$$ = node_children($1, 2, $7, $3);
 		free($5); // Free unused NTWHILE Node*
 	}
+	| __FOR__ OP_PAR Affectation COLON BooleanExpression COLON Affectation CL_PAR OP_BRA InstList CL_BRA {
+		$$ = node_children($1, 4, $3, $5, $7, $10);
+	}
 	;
 
 BooleanExpression:
@@ -207,6 +210,13 @@ BooleanExpression:
 	}
 	| OP_PAR BooleanExpression CL_PAR {
 		$$ = $2;
+	}
+	;
+
+Affectation:
+	VARIABLE AFFECT Expression {
+		// Add the affectation in the tree
+		$$ = node_children($2, 2, $1, $3);
 	}
 	;
 
@@ -377,6 +387,12 @@ int exec(Node *node)
 			}
 			break;
 
+		case NTFOR:
+			for(exec(node->children[0]) ; boolean_value(node->children[1]) ; exec(node->children[2])) {
+				exec(node->children[3]);
+			}
+			break;
+
 		default:
 			printf("Syntax error (#%d).\n", node->type);
 			return -1;
@@ -476,6 +492,7 @@ void tree_print(Node *node, int stage)
 
 		case NTDO:		printf("do"); break;
 		case NTWHILE:	printf("while"); break;
+		case NTFOR:		printf("for"); break;
 
 		case NTISEQ:	printf("=="); break;
 		case NTISDIFF:	printf("!="); break;

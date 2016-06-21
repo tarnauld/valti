@@ -15,7 +15,7 @@
 		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF, // Operators
 		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE, // Boolean operators
 		NTAND, NTOR,
-		NTECHO, NTIF, NTELIF, NTELSE, NTDO, NTWHILE // Primary instructions
+		NTECHO, NTIF, NTELIF, NTELSE, NTDO, NTWHILE, NTFOR // Primary instructions
 	} NodeType;
 
 	typedef struct Node {
@@ -84,6 +84,11 @@ comment (\/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+\/)|(\/\/.*[\r\n]+)
 "while" {
 	yylval.node = node_new(NTWHILE);
 	return(__WHILE__);
+}
+
+"for" {
+	yylval.node = node_new(NTFOR);
+	return(__FOR__);
 }
 
 {real} {
@@ -172,6 +177,7 @@ comment (\/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+\/)|(\/\/.*[\r\n]+)
 }
 
 ";" return (COLON);
+"," return(COMMA);
 
 <<EOF>> return(END);
 
