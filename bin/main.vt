@@ -18,12 +18,13 @@ j = 5;
 if(j == 3) { // Starting a comment
     echo(3);
 }
+elif(j > /* Sneaky comment \o */ 3) {
+    echo(5);
+}
+elif(j <= 3) {
+    echo(-5);
+}
 else {
-    if(j < /* Sneaky comment \o */ 3) {
-        echo(5);
-    } else {
-        echo(-5);
-    }
     echo(-3);
 }
 

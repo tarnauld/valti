@@ -18,7 +18,7 @@
 		NTPLUS, NTMIN, NTMULT, NTDIV, NTPOW, NTAFF, // Operators
 		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE,// Boolean operators
 		NTAND, NTOR,
-		NTECHO, NTIF, NTELSE, NTDO, NTWHILE // Primary instructions
+		NTECHO, NTIF, NTELIF, NTELSE, NTDO, NTWHILE // Primary instructions
 	} NodeType;
 
 	typedef struct Node {
@@ -70,13 +70,14 @@
 %token <node> PLUS MINUS MULTIPLY DIVIDE POWER AFFECT
 %token <node> IS_EQUAL IS_DIFFERENT IS_LOWER IS_GREATER IS_LOWER_EQUAL IS_GREATER_EQUAL
 %token <node> BOOL_AND BOOL_OR
-%token <node> __ECHO__ __IF__ __ELSE__ __DO__ __WHILE__
+%token <node> __ECHO__ __IF__ __ELIF__ __ELSE__ __DO__ __WHILE__
 
 %token OP_PAR CL_PAR OP_BRA CL_BRA COLON
 %token END
 
 %type <node> InstList
 %type <node> Inst
+%type <node> Condition
 %type <node> ConditionnalInst
 %type <node> LoopInst
 %type <node> BooleanExpression
@@ -142,11 +143,20 @@ Inst:
 	}
 	;
 
-ConditionnalInst:
+Condition:
 	__IF__ OP_PAR BooleanExpression CL_PAR OP_BRA InstList CL_BRA {
 		$$ = node_children($1, 2, $3, $6);
 	}
-	| ConditionnalInst __ELSE__ OP_BRA InstList CL_BRA {
+	| Condition __ELIF__ OP_PAR BooleanExpression CL_PAR OP_BRA InstList CL_BRA {
+		$$ = node_children($2, 3, $1, $4, $7);
+	}
+	;
+
+ConditionnalInst:
+	Condition {
+		$$ = $1;
+	}
+	| Condition __ELSE__ OP_BRA InstList CL_BRA {
 		$$ = node_children($2, 2, $1, $4);
 	}
 	/*/ TODO: One-inst conditions
@@ -338,19 +348,20 @@ int exec(Node *node)
 			break;
 
 		case NTIF:
-			if(boolean_value(node->children[0])) {
-				exec(node->children[1]);
-				// Returns 0 by default
-			}
-			else {
-				return 1;
+			return boolean_value(node->children[0]) ? exec(node->children[1]) : 1;
+			break;
+
+		case NTELIF:
+			if(exec(node->children[0]) == 1) { // If the IF statement is not executed
+				// If the ELIF statement is true, execute it
+				return boolean_value(node->children[1]) ? exec(node->children[2]) : 1;
 			}
 			break;
 
 		case NTELSE:
-			// If the IF statement is not executed, then we execute the ELSE statement
+			// If the IF or last ELIF statement is not executed, then we execute the ELSE statement
 			if(exec(node->children[0]) == 1) {
-				exec(node->children[1]);
+				return exec(node->children[1]);
 			}
 			break;
 
@@ -460,6 +471,7 @@ void tree_print(Node *node, int stage)
 		case NTECHO: 	printf("echo"); break;
 
 		case NTIF: 		printf("if"); break;
+		case NTELIF:	printf("elif"); break;
 		case NTELSE:	printf("else"); break;
 
 		case NTDO:		printf("do"); break;
