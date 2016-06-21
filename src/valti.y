@@ -19,7 +19,6 @@
 		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE, // Boolean operators
 		NTAND, NTOR,
 		NTECHO, NTIF, NTELIF, NTELSE, NTDO, NTWHILE, NTFOR, // Primary instructions
-		NTPLUSEQ, NTMINEQ, NTMULTEQ, NTDIVEQ, NTPOWEQ, NTMODEQ // Modulo & calculated affectation
 	} NodeType;
 
 	typedef struct Node {
@@ -525,13 +524,6 @@ void tree_print(Node *node, int stage)
         case NTPOW: 	printf("^"); break;
 		case NTMOD:		printf("%%"); break;
         case NTAFF: 	printf("="); break;
-
-        case NTPLUSEQ: 	printf("+="); break;
-		case NTMINEQ: 	printf("-="); break;
-        case NTMULTEQ:	printf("*="); break;
-        case NTDIVEQ: 	printf("/="); break;
-        case NTPOWEQ: 	printf("^="); break;
-		case NTMODEQ:		printf("%%="); break;
 
 		case NTECHO: 	printf("echo"); break;
 

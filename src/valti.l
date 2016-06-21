@@ -16,7 +16,6 @@
 		NTISEQ, NTISDIFF, NTISLT, NTISGT, NTISGE, NTISLE, // Boolean operators
 		NTAND, NTOR,
 		NTECHO, NTIF, NTELIF, NTELSE, NTDO, NTWHILE, NTFOR, // Primary instructions
-		NTPLUSEQ, NTMINEQ, NTMULTEQ, NTDIVEQ, NTPOWEQ, NTMODEQ // Modulo & calculated affectation
 	} NodeType;
 
 	typedef struct Node {
@@ -49,7 +48,7 @@ integer {digit}+
 exponent [eE][+-]?{integer}
 real {integer}("."{integer})?{exponent}?
 
-variable ([a-zA-Z]+[0-9_-]*[a-zA-Z]*)+
+variable ([a-zA-Z]+[0-9_]*[a-zA-Z]*)+
 
 comment (\/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+\/)|(\/\/.*[\r\n]+)
 
@@ -133,35 +132,12 @@ comment (\/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+\/)|(\/\/.*[\r\n]+)
 	return(MODULO);
 }
 
-"+=" {
-	yylval.node = node_new(NTPLUSEQ);
-	return(PLUS_EQ);
-}
-
-"-=" {
-	yylval.node = node_new(NTMINEQ);
-	return(MINUS_EQ);
-}
-
-"*=" {
-	yylval.node = node_new(NTMULTEQ);
-	return(MULTIPLY_EQ);
-}
-
-"/=" {
-	yylval.node = node_new(NTDIVEQ);
-	return(DIVIDE_EQ);
-}
-
-"^=" {
-	yylval.node = node_new(NTPOWEQ);
-	return(POWER_EQ);
-}
-
-"%=" {
-	yylval.node = node_new(NTMODEQ);
-	return(MODULO_EQ);
-}
+"+=" return(PLUS_EQ);
+"-=" return(MINUS_EQ);
+"*=" return(MULTIPLY_EQ);
+"/=" return(DIVIDE_EQ);
+"^=" return(POWER_EQ);
+"%=" return(MODULO_EQ);
 
 "=" {
 	yylval.node = node_new(NTAFF);
